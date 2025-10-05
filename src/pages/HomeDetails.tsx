@@ -62,7 +62,7 @@ export default function HomeDetails() {
 
   const handleGoOffGrid = async () => {
     try {
-      await fetch('http://localhost:3001/sim/event', {
+      await fetch('http://sharewatt-backend.prabhathpalakurthi.workers.dev/sim/event', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'OUTAGE' })

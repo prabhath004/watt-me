@@ -224,7 +224,7 @@ export default function UserAppLive() {
 
   useEffect(() => {
     // Try to connect to real simulator first
-    const es = new EventSource("http://localhost:3001/stream");
+    const es = new EventSource("http://sharewatt-backend.prabhathpalakurthi.workers.dev/stream");
 
     es.onopen = () => {
       setConnected(true);
@@ -354,7 +354,7 @@ export default function UserAppLive() {
 
   const handleGoOffGrid = async () => {
     try {
-      await fetch('http://localhost:3001/sim/event', {
+      await fetch('http://sharewatt-backend.prabhathpalakurthi.workers.dev/sim/event', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'OUTAGE' })

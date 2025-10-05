@@ -54,7 +54,7 @@ export function useLiveHome(homeId: string, maxDataPoints = 60): LiveHomeData {
   const [community, setCommunity] = useState<CommunityData>({ prod: 0, mg_used: 0, unserved: 0 });
 
   useEffect(() => {
-    const es = new EventSource("http://localhost:3001/stream");
+    const es = new EventSource("http://sharewatt-backend.prabhathpalakurthi.workers.dev/stream");
 
     es.onopen = () => {
       setConnected(true);

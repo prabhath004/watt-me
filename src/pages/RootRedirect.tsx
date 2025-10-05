@@ -111,7 +111,7 @@ export default function RootRedirect() {
               <div className="text-center p-4 bg-green-50 dark:bg-green-950 rounded-lg">
                 <div className="text-2xl font-bold text-green-600">✅</div>
                 <div className="text-sm text-muted-foreground">Simulator Backend</div>
-                <div className="text-xs">localhost:3001</div>
+                <div className="text-xs">sharewatt-backend.prabhathpalakurthi.workers.dev</div>
               </div>
               
               <div className="text-center p-4 bg-green-50 dark:bg-green-950 rounded-lg">

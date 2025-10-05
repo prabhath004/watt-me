@@ -89,7 +89,7 @@ export default function AdminLive() {
 
   // Connect to SSE stream
   useEffect(() => {
-    const es = new EventSource("http://localhost:3001/stream");
+    const es = new EventSource("http://sharewatt-backend.prabhathpalakurthi.workers.dev/stream");
 
     es.onopen = () => {
       console.log("✅ Connected to live simulator");
@@ -132,7 +132,7 @@ export default function AdminLive() {
     es.onerror = (err) => {
       console.error("SSE connection error:", err);
       setConnected(false);
-      setError("Connection lost. Make sure simulator is running at http://localhost:3001");
+      setError("Connection lost. Make sure simulator is running at http://sharewatt-backend.prabhathpalakurthi.workers.dev");
     };
 
     setEventSource(es);
@@ -144,15 +144,15 @@ export default function AdminLive() {
 
   // Control functions
   const handlePause = async () => {
-    await fetch("http://localhost:3001/sim/pause", { method: "POST" });
+    await fetch("http://sharewatt-backend.prabhathpalakurthi.workers.dev/sim/pause", { method: "POST" });
   };
 
   const handleResume = async () => {
-    await fetch("http://localhost:3001/sim/resume", { method: "POST" });
+    await fetch("http://sharewatt-backend.prabhathpalakurthi.workers.dev/sim/resume", { method: "POST" });
   };
 
   const handleReset = async () => {
-    await fetch("http://localhost:3001/sim/reset?seed=42&mode=accelerated", { method: "POST" });
+    await fetch("http://sharewatt-backend.prabhathpalakurthi.workers.dev/sim/reset?seed=42&mode=accelerated", { method: "POST" });
     setChartData([]); // Clear chart on reset
   };
 
@@ -174,7 +174,7 @@ export default function AdminLive() {
       }, 1000);
     }
     
-    await fetch("http://localhost:3001/sim/event", {
+    await fetch("http://sharewatt-backend.prabhathpalakurthi.workers.dev/sim/event", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type, duration_min: duration }),
