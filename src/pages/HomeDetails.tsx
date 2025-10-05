@@ -62,7 +62,8 @@ export default function HomeDetails() {
 
   const handleGoOffGrid = async () => {
     try {
-      await fetch('http://localhost:3001/sim/event', {
+      const baseUrl = import.meta.env.VITE_SIM_API_URL as string;
+      await fetch(`${baseUrl}/sim/event`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'OUTAGE' })

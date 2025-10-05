@@ -89,7 +89,8 @@ export default function AdminLive() {
 
   // Connect to SSE stream
   useEffect(() => {
-    const es = new EventSource("http://localhost:3001/stream");
+    const baseUrl = import.meta.env.VITE_SIM_API_URL as string;
+    const es = new EventSource(`${baseUrl}/stream`);
 
     es.onopen = () => {
       console.log("✅ Connected to live simulator");
@@ -132,7 +133,7 @@ export default function AdminLive() {
     es.onerror = (err) => {
       console.error("SSE connection error:", err);
       setConnected(false);
-      setError("Connection lost. Make sure simulator is running at http://localhost:3001");
+      setError("Connection lost. Check simulator backend URL.");
     };
 
     setEventSource(es);
@@ -144,15 +145,18 @@ export default function AdminLive() {
 
   // Control functions
   const handlePause = async () => {
-    await fetch("http://localhost:3001/sim/pause", { method: "POST" });
+    const baseUrl = import.meta.env.VITE_SIM_API_URL as string;
+    await fetch(`${baseUrl}/sim/pause`, { method: "POST" });
   };
 
   const handleResume = async () => {
-    await fetch("http://localhost:3001/sim/resume", { method: "POST" });
+    const baseUrl = import.meta.env.VITE_SIM_API_URL as string;
+    await fetch(`${baseUrl}/sim/resume`, { method: "POST" });
   };
 
   const handleReset = async () => {
-    await fetch("http://localhost:3001/sim/reset?seed=42&mode=accelerated", { method: "POST" });
+    const baseUrl = import.meta.env.VITE_SIM_API_URL as string;
+    await fetch(`${baseUrl}/sim/reset?seed=42&mode=accelerated`, { method: "POST" });
     setChartData([]); // Clear chart on reset
   };
 
@@ -174,7 +178,8 @@ export default function AdminLive() {
       }, 1000);
     }
     
-    await fetch("http://localhost:3001/sim/event", {
+    const baseUrl = import.meta.env.VITE_SIM_API_URL as string;
+    await fetch(`${baseUrl}/sim/event`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type, duration_min: duration }),

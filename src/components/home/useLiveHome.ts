@@ -54,7 +54,8 @@ export function useLiveHome(homeId: string, maxDataPoints = 60): LiveHomeData {
   const [community, setCommunity] = useState<CommunityData>({ prod: 0, mg_used: 0, unserved: 0 });
 
   useEffect(() => {
-    const es = new EventSource("http://localhost:3001/stream");
+    const baseUrl = import.meta.env.VITE_SIM_API_URL as string;
+    const es = new EventSource(`${baseUrl}/stream`);
 
     es.onopen = () => {
       setConnected(true);
