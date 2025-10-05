@@ -105,13 +105,13 @@ export default function RootRedirect() {
               <div className="text-center p-4 bg-green-50 dark:bg-green-950 rounded-lg">
                 <div className="text-2xl font-bold text-green-600">✅</div>
                 <div className="text-sm text-muted-foreground">Frontend Server</div>
-                <div className="text-xs">localhost:8080</div>
+                <div className="text-xs">{window.location.origin}</div>
               </div>
               
               <div className="text-center p-4 bg-green-50 dark:bg-green-950 rounded-lg">
                 <div className="text-2xl font-bold text-green-600">✅</div>
                 <div className="text-sm text-muted-foreground">Simulator Backend</div>
-                <div className="text-xs">localhost:3001</div>
+                <div className="text-xs">{import.meta.env.VITE_SIM_API_URL}</div>
               </div>
               
               <div className="text-center p-4 bg-green-50 dark:bg-green-950 rounded-lg">
