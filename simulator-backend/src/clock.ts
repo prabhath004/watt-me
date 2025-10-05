@@ -70,10 +70,10 @@ export class VirtualClock {
   }
 
   /**
-   * Advance time by one minute
+   * Advance time by 15 minutes
    */
   private advanceMinute(): void {
-    this.currentTime = new Date(this.currentTime.getTime() + 60_000);
+    this.currentTime = new Date(this.currentTime.getTime() + 15 * 60_000);
   }
 
   /**
@@ -82,7 +82,7 @@ export class VirtualClock {
   private scheduleTick(): void {
     if (this.paused || !this.onTick) return;
 
-    const interval = this.mode === "realtime" ? 60_000 : 500; // 1 min or 0.5s
+    const interval = this.mode === "realtime" ? 60_000 : 1000; // 1 min or 1s (15 min = 1s)
 
     this.tickInterval = setTimeout(() => {
       this.advanceMinute();

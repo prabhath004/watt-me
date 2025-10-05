@@ -3,12 +3,42 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Home, LogOut } from 'lucide-react';
 
+// Family name mapping for user display
+const familyNames: Record<string, string> = {
+  "H001": "Johnson Family",
+  "H002": "Smith Family", 
+  "H003": "Williams Family",
+  "H004": "Brown Family",
+  "H005": "Davis Family",
+  "H006": "Miller Family",
+  "H007": "Wilson Family",
+  "H008": "Moore Family",
+  "H009": "Taylor Family",
+  "H010": "Anderson Family",
+  "H011": "Thomas Family",
+  "H012": "Jackson Family",
+  "H013": "White Family",
+  "H014": "Harris Family",
+  "H015": "Martin Family",
+  "H016": "Thompson Family",
+  "H017": "Garcia Family",
+  "H018": "Martinez Family",
+  "H019": "Robinson Family",
+  "H020": "Clark Family",
+  "H021": "Rodriguez Family",
+  "H022": "Lewis Family",
+  "H023": "Lee Family",
+  "H024": "Walker Family",
+  "H025": "Hall Family"
+};
+
 interface UserHeaderProps {
   homeId: string;
 }
 
 export function UserHeader({ homeId }: UserHeaderProps) {
   const { logout } = useAuth();
+  const familyName = familyNames[homeId] || `Home ${homeId}`;
 
   return (
     <header style={{ 
@@ -27,7 +57,7 @@ export function UserHeader({ homeId }: UserHeaderProps) {
             </div>
             <div>
               <h1 className="text-2xl font-bold" style={{ color: 'var(--text)' }}>My Home</h1>
-              <p className="text-sm" style={{ color: 'var(--text-dim)' }}>NeighborGrid • {homeId}</p>
+              <p className="text-sm" style={{ color: 'var(--text-dim)' }}>NeighborGrid • {familyName}</p>
             </div>
           </div>
           <div className="flex items-center gap-4">

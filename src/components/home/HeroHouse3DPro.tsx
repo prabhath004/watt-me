@@ -4,6 +4,7 @@ import { SolarPill, HomePill, BatteryPill, GridPill } from './StatPill';
 import { HouseGlyph, getHouseAnchors } from './HouseGlyph';
 import { calculateFlowPaths } from './flowHelpers';
 import { TOKENS } from './tokens';
+import { Battery, Zap } from 'lucide-react';
 
 interface HeroHouse3DProProps {
   pvKw: number;
@@ -57,10 +58,10 @@ export function HeroHouse3DPro({
       }}
     >
       <div className="relative">
-        {/* Main PNG Container - House and Car Side by Side */}
-        <div className="flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4 mb-8">
-          {/* House Section */}
-          <div className="relative">
+        {/* Main Energy Flow Diagram - Clean Layout */}
+        <div className="relative mb-8" style={{ minHeight: '400px' }}>
+          {/* House Section - Centered at top */}
+          <div className="flex justify-center mb-8">
             <HouseGlyph 
               pvKw={pvKw}
               socPct={socPct}
@@ -69,16 +70,66 @@ export function HeroHouse3DPro({
             />
           </div>
 
-          {/* Car Section - Bigger, closer, darker, and positioned lower */}
-          <div className="flex items-end">
-            <img
-              src="/cybertruck.png"
-              alt="Tesla Cybertruck"
-              className="w-48 md:w-56 h-auto opacity-90 hover:opacity-100 transition-opacity duration-300"
-              style={{
-                transform: 'translateX(-20px) translateY(20px)'
-              }}
-            />
+          {/* Three Objects in a Row at Bottom */}
+          <div className="flex justify-center items-center gap-8">
+            {/* Microgrid Connection - Left */}
+            <div className="flex flex-col items-center">
+              <div className="bg-green-800 rounded-lg p-4 shadow-lg border-2 border-green-600 mb-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <Zap className="h-5 w-5 text-white" />
+                  <span className="text-white text-sm font-semibold">Microgrid</span>
+                </div>
+                <div className="text-white text-xl font-bold">
+                  {shareKw.toFixed(1)} kW
+                </div>
+                <div className="text-green-300 text-sm">
+                  Community Sharing
+                </div>
+                {/* Energy flow indicator */}
+                {shareKw > 0 && (
+                  <div className="flex items-center gap-1 mt-2">
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                    <span className="text-green-300 text-sm">Active</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Car Section - Center */}
+            <div className="flex flex-col items-center">
+              <img
+                src="/cybertruck.png"
+                alt="Tesla Cybertruck"
+                className="w-32 h-auto opacity-90 hover:opacity-100 transition-opacity duration-300 mb-2"
+              />
+              <div className="text-sm text-gray-600 font-medium">Tesla Cybertruck</div>
+            </div>
+
+            {/* Battery Pack - Right */}
+            <div className="flex flex-col items-center">
+              <div className="bg-gray-800 rounded-lg p-4 shadow-lg border-2 border-gray-600 mb-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <Battery className="h-5 w-5 text-white" />
+                  <span className="text-white text-sm font-semibold">Battery Pack</span>
+                </div>
+                <div className="text-white text-xl font-bold">
+                  {socPct.toFixed(0)}%
+                </div>
+                <div className="text-gray-300 text-sm">
+                  {(socPct * 0.06).toFixed(1)}kWh / 6kWh
+                </div>
+                {/* Battery level indicator */}
+                <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
+                  <div 
+                    className={`h-2 rounded-full transition-all duration-500 ${
+                      socPct < 20 ? 'bg-red-500' : 
+                      socPct < 60 ? 'bg-yellow-500' : 'bg-green-500'
+                    }`}
+                    style={{ width: `${socPct}%` }}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

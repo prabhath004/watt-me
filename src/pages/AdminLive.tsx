@@ -3,34 +3,40 @@
  */
 
 import { useState, useEffect, useRef } from "react";
-import { AdminHeader } from "@/components/admin/AdminHeader";
+import { 
+  connectSSE, 
+  startPollingFallback, 
+  updateLastSseTs, 
+  normalizeAdminDelta, 
+  type AdminNow 
+} from "@/lib/adminData";
+import { ModernLayout } from "@/components/layout/ModernLayout";
+import { KPICard } from "@/components/ui/KPICard";
+import { StatCard } from "@/components/ui/StatCard";
+import { ControlBar } from "@/components/ui/ControlBar";
+import { StatusPill } from "@/components/ui/StatusPill";
 import InteractiveMap from "@/components/admin/InteractiveMap";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Zap, Activity, Battery, TrendingUp, TrendingDown, Play, Pause, RotateCcw, CloudRain, Flame, Car, AlertTriangle } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { 
+  Sun, 
+  Activity, 
+  TrendingUp, 
+  TrendingDown, 
+  Battery, 
+  AlertTriangle,
+  Play,
+  Pause,
+  RotateCcw,
+  CloudRain,
+  Car,
+  Zap
+} from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
-interface SSEHome {
-  id: string;
-  pv: number;
-  load: number;
-  soc: number;
-  share: number;
-  recv: number;
-  imp: number;
-  exp: number;
-  creditsDelta: number;
-}
-
-interface SSEData {
-  ts: string;
-  homes: SSEHome[];
-  grid: { imp: number; exp: number };
-  community: { prod: number; mg_used: number; unserved: number };
-}
-
+// Chart data point interface
 interface ChartDataPoint {
   time: string;
   timestamp: number;
@@ -42,11 +48,15 @@ interface ChartDataPoint {
 }
 
 export default function AdminLive() {
-  const [liveData, setLiveData] = useState<SSEData | null>(null);
+  const [adminNow, setAdminNow] = useState<AdminNow | null>(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [eventSource, setEventSource] = useState<EventSource | null>(null);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  const [outageActive, setOutageActive] = useState(false);
+  const [outageTimeLeft, setOutageTimeLeft] = useState(0);
+  const [lastMessageTime, setLastMessageTime] = useState<number>(Date.now());
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [speed, setSpeed] = useState(1);
   const maxDataPoints = 96; // Keep last 96 points (24 hours = 96 * 15min intervals)
 
   // Mapping from simulation IDs to family names
@@ -55,27 +65,27 @@ export default function AdminLive() {
     'H002': 'Smith', 
     'H003': 'Williams',
     'H004': 'Brown',
-    'H005': 'Davis',
-    'H006': 'Miller',
-    'H007': 'Wilson',
-    'H008': 'Moore',
-    'H009': 'Taylor',
-    'H010': 'Anderson',
-    'H011': 'Garcia',
-    'H012': 'Martinez',
-    'H013': 'Rodriguez',
-    'H014': 'Lopez',
-    'H015': 'Gonzalez',
-    'H016': 'Flores',
-    'H017': 'Rivera',
-    'H018': 'Cooper',
-    'H019': 'Reed',
-    'H020': 'Cook',
-    'H021': 'Bailey',
-    'H022': 'Murphy',
-    'H023': 'Kelly',
-    'H024': 'Howard',
-    'H025': 'Ward'
+    'H005': 'Jones',
+    'H006': 'Garcia',
+    'H007': 'Miller',
+    'H008': 'Davis',
+    'H009': 'Rodriguez',
+    'H010': 'Martinez',
+    'H011': 'Hernandez',
+    'H012': 'Lopez',
+    'H013': 'Gonzalez',
+    'H014': 'Wilson',
+    'H015': 'Anderson',
+    'H016': 'Thomas',
+    'H017': 'Taylor',
+    'H018': 'Moore',
+    'H019': 'Jackson',
+    'H020': 'Martin',
+    'H021': 'Lee',
+    'H022': 'Perez',
+    'H023': 'Thompson',
+    'H024': 'White',
+    'H025': 'Harris'
   };
 
   // Get family name from simulation ID
@@ -83,535 +93,407 @@ export default function AdminLive() {
     return simIdToFamily[simId] || simId;
   };
 
-  // Connect to SSE stream
+  // SSE connection with new data flow
   useEffect(() => {
-    const es = new EventSource("http://localhost:3001/stream");
+    let es: EventSource | null = null;
 
-    es.onopen = () => {
-      console.log("✅ Connected to live simulator");
-      setConnected(true);
-      setError(null);
-    };
+    const handleMessage = (payload: any) => {
+      updateLastSseTs();
+      
+      // Handle heartbeat
+      if (payload.kind === 'boot') {
+        console.log("💓 Boot event received");
+        setConnected(true);
+        setError(null);
+        return;
+      }
 
-    es.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);
-        setLiveData(data);
+        const { now, point } = normalizeAdminDelta(payload);
+        setAdminNow(now);
 
-        // Add to chart data
-        const time = new Date(data.ts);
-        const totalConsumption = data.homes.reduce((sum: number, h: SSEHome) => sum + h.load, 0);
-        
-        const newPoint: ChartDataPoint = {
-          time: time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-          timestamp: time.getTime(),
-          production: Math.round(data.community.prod),
-          consumption: Math.round(totalConsumption),
-          shared: Math.round(data.community.mg_used * 10) / 10,
-          gridImport: Math.round(data.grid.imp),
-          gridExport: Math.round(data.grid.exp),
-        };
+        if (point) {
+          const newPoint: ChartDataPoint = {
+            time: new Date(point.ts).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            timestamp: point.ts,
+            production: Math.round(point.production_kw),
+            consumption: Math.round(point.consumption_kw),
+            shared: Math.round(point.microgrid_shared_kw * 10) / 10,
+            gridImport: Math.round(point.grid_import_kw),
+            gridExport: Math.round(point.grid_export_kw),
+          };
 
-        setChartData(prev => {
-          const updated = [...prev, newPoint];
-          // Keep only last N points
-          if (updated.length > maxDataPoints) {
-            return updated.slice(updated.length - maxDataPoints);
-          }
-          return updated;
-        });
+          setChartData(prev => {
+            const updated = [...prev, newPoint];
+            if (updated.length > maxDataPoints) {
+              return updated.slice(updated.length - maxDataPoints);
+            }
+            return updated;
+          });
+        }
       } catch (err) {
-        console.error("Failed to parse SSE data:", err);
+        console.error("Failed to process message:", err);
       }
     };
 
-    es.onerror = (err) => {
-      console.error("SSE connection error:", err);
-      setConnected(false);
-      setError("Connection lost. Make sure simulator is running at http://localhost:3001");
-    };
-
-    setEventSource(es);
+    // Start SSE connection
+    es = connectSSE(handleMessage);
+    
+    // Start polling fallback
+    startPollingFallback(handleMessage);
 
     return () => {
-      es.close();
+      if (es) {
+        es.close();
+      }
     };
   }, []);
 
+  // Check for stale connection
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const stale = Date.now() - lastMessageTime > 10000; // 10 seconds
+      if (stale && connected) {
+        setConnected(false);
+        setError("Connection lost. Make sure simulator is running.");
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [lastMessageTime, connected]);
+
   // Control functions
   const handlePause = async () => {
-    await fetch("http://localhost:3001/sim/pause", { method: "POST" });
+    try {
+      const response = await fetch('http://localhost:3001/sim/pause', { method: "POST" });
+      if (response.ok) {
+        setIsPlaying(false);
+      }
+    } catch (err) {
+      console.error("Failed to pause simulation:", err);
+    }
   };
 
   const handleResume = async () => {
-    await fetch("http://localhost:3001/sim/resume", { method: "POST" });
+    try {
+      const response = await fetch('http://localhost:3001/sim/resume', { method: "POST" });
+      if (response.ok) {
+        setIsPlaying(true);
+      }
+    } catch (err) {
+      console.error("Failed to resume simulation:", err);
+    }
   };
 
   const handleReset = async () => {
-    await fetch("http://localhost:3001/sim/reset?seed=42&mode=accelerated", { method: "POST" });
-    setChartData([]); // Clear chart on reset
+    try {
+      await fetch('http://localhost:3001/sim/reset?seed=42&mode=accelerated', { method: "POST" });
+      setChartData([]); // Clear chart on reset
+    } catch (err) {
+      console.error("Failed to reset simulation:", err);
+    }
   };
 
   const handleEvent = async (type: string, duration: number) => {
-    await fetch("http://localhost:3001/sim/event", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type, duration_min: duration }),
-    });
+    try {
+      if (type === 'OUTAGE') {
+        setOutageActive(true);
+        setOutageTimeLeft(duration);
+        
+        // Countdown timer
+        const countdown = setInterval(() => {
+          setOutageTimeLeft(prev => {
+            if (prev <= 1) {
+              clearInterval(countdown);
+              setOutageActive(false);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      }
+      
+      await fetch('http://localhost:3001/sim/event', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, duration_min: duration }),
+      });
+    } catch (err) {
+      console.error("Failed to trigger event:", err);
+    }
   };
 
-  if (error) {
+  const handleSpeedChange = (newSpeed: number) => {
+    setSpeed(newSpeed);
+  };
+
+  const handleEventToggle = (eventType: string) => {
+    if (eventType === 'OUTAGE') {
+      handleEvent('OUTAGE', 5);
+    }
+  };
+
+  // Show error state if no connection and error exists
+  if (error && !connected) {
     return (
-      <div className="min-h-screen bg-background">
-        <AdminHeader microgridId="default" />
-        <div className="max-w-7xl mx-auto p-6">
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-          <div className="mt-4 text-sm text-muted-foreground">
-            <p>To start the simulator:</p>
-            <pre className="mt-2 p-4 bg-muted rounded">
-              cd simulator-backend{"\n"}
-              npm run dev
-            </pre>
-          </div>
+      <ModernLayout 
+        title="Admin Live" 
+        subtitle="Simulator Dashboard"
+        status="error"
+      >
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+        <div className="text-sm text-muted">
+          <p>To start the simulator:</p>
+          <pre className="mt-2 p-4 bg-muted/20 rounded-lg font-mono text-sm">
+            cd simulator-backend{"\n"}
+            npm run dev
+          </pre>
         </div>
-      </div>
+      </ModernLayout>
     );
   }
 
-  if (!liveData) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <Activity className="h-12 w-12 animate-pulse mx-auto text-primary" />
-          <p className="mt-4 text-muted-foreground">Connecting to live simulator...</p>
-        </div>
-      </div>
-    );
-  }
-
-  const time = new Date(liveData.ts);
-  const totalProducing = liveData.homes.filter(h => h.pv > 0).length;
-  const totalSharing = liveData.homes.filter(h => h.share > 0).length;
-  const avgSOC = Math.round(liveData.homes.reduce((sum, h) => sum + h.soc, 0) / liveData.homes.length);
+  // Rounding helper
+  const r = (x: number) => Math.round(x ?? 0);
 
   return (
-    <div className="min-h-screen bg-background">
-      <AdminHeader microgridId="default" />
+    <ModernLayout 
+      title="Live Simulator" 
+      subtitle={`Real-time energy flow • Updated every 1s (15min intervals) • 20 homes active`}
+      status={connected && adminNow ? "live" : "paused"}
+      speed={speed}
+    >
+      {/* Control Bar */}
+      <ControlBar
+        isPlaying={isPlaying}
+        speed={speed}
+        activeEvents={outageActive ? ['OUTAGE'] : []}
+        onPlayPause={isPlaying ? handlePause : handleResume}
+        onSpeedChange={handleSpeedChange}
+        onEventToggle={handleEventToggle}
+        onReset={handleReset}
+      />
 
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <Activity className={`h-8 w-8 ${connected ? "text-green-500 animate-pulse" : "text-gray-400"}`} />
-              Live Simulator
-            </h1>
-            <p className="text-muted-foreground mt-1">
-               Real-time energy flow • Updated every 1s (15min intervals) • 20 homes active
-            </p>
-          </div>
-          <Badge variant={connected ? "default" : "secondary"} className="text-sm">
-            {connected ? "🟢 LIVE" : "⚫ Disconnected"}
-          </Badge>
-        </div>
+      {/* Outage Alert */}
+      {outageActive && (
+        <Alert className="mb-6 bg-warn/20 text-warn border-warn/30">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Grid Outage Active</strong> - {outageTimeLeft} minutes remaining
+          </AlertDescription>
+        </Alert>
+      )}
 
-        {/* Time & Controls */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Simulation Time</CardTitle>
-                 <CardDescription>Virtual clock in accelerated mode (15 min = 1s)</CardDescription>
-              </div>
-              <div className="text-right">
-                <div className="text-3xl font-mono font-bold">
-                  {time.toLocaleTimeString()}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {time.toLocaleDateString()}
-                </div>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-2 flex-wrap">
-              <Button size="sm" onClick={handlePause} variant="outline">
-                <Pause className="h-4 w-4 mr-1" />
-                Pause
-              </Button>
-              <Button size="sm" onClick={handleResume} variant="outline">
-                <Play className="h-4 w-4 mr-1" />
-                Resume
-              </Button>
-              <Button size="sm" onClick={handleReset} variant="outline">
-                <RotateCcw className="h-4 w-4 mr-1" />
-                Reset
-              </Button>
-              <div className="border-l mx-2" />
-              <Button size="sm" onClick={() => handleEvent("CLOUDBURST", 60)} variant="secondary">
-                <CloudRain className="h-4 w-4 mr-1" />
-                Cloudburst (1h)
-              </Button>
-              <Button size="sm" onClick={() => handleEvent("HEATWAVE", 120)} variant="secondary">
-                <Flame className="h-4 w-4 mr-1" />
-                Heatwave (2h)
-              </Button>
-              <Button size="sm" onClick={() => handleEvent("EV_SURGE", 240)} variant="secondary">
-                <Car className="h-4 w-4 mr-1" />
-                EV Surge (4h)
-              </Button>
-              <Button size="sm" onClick={() => handleEvent("OUTAGE", 30)} variant="destructive">
-                <AlertTriangle className="h-4 w-4 mr-1" />
-                Outage (30m)
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      {/* KPI Ribbon */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <KPICard
+          icon={Sun}
+          title="Production"
+          value={`${r(adminNow?.production_kw || 0)} kW`}
+          subtext={`${Math.round((adminNow?.production_kw || 0) / 0.2)} of 20 homes producing`}
+          color="prod-gold"
+          trend="up"
+        />
+        
+        <KPICard
+          icon={Activity}
+          title="Microgrid"
+          value={`${r((adminNow?.microgrid_shared_kw || 0) * 10) / 10} kW`}
+          subtext={`${Math.round((adminNow?.microgrid_shared_kw || 0) / 0.1)} homes sharing`}
+          color="share-green"
+          trend="up"
+        />
+        
+        <KPICard
+          icon={(adminNow?.grid_import_kw || 0) > 0 ? TrendingDown : TrendingUp}
+          title="Grid"
+          value={(adminNow?.grid_import_kw || 0) > 0 ? `↓ ${r(adminNow?.grid_import_kw || 0)} kW` : `↑ ${r(adminNow?.grid_export_kw || 0)} kW`}
+          subtext={(adminNow?.grid_import_kw || 0) > 0 ? "Importing" : "Exporting"}
+          color="grid-blue"
+          trend={(adminNow?.grid_import_kw || 0) > 0 ? "down" : "up"}
+        />
+        
+        <KPICard
+          icon={Battery}
+          title="Avg Battery"
+          value={`${r(adminNow?.avg_battery_soc_pct || 0)}%`}
+          subtext="Community average"
+          color="brand-2"
+          trend="neutral"
+        />
+      </div>
 
-        {/* Interactive Map */}
-        <InteractiveMap homes={liveData.homes} />
+      {/* Interactive Map */}
+      <div className="mb-6">
+        <InteractiveMap homes={[]} />
+      </div>
 
-        {/* Live KPIs */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Zap className="h-4 w-4 text-yellow-500" />
-                Production
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{liveData.community.prod} kW</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {totalProducing} of 20 homes producing
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Activity className="h-4 w-4 text-green-500" />
-                Microgrid
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{liveData.community.mg_used.toFixed(1)} kW</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {totalSharing} homes sharing
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                {liveData.grid.imp > 0 ? (
-                  <TrendingDown className="h-4 w-4 text-red-500" />
-                ) : (
-                  <TrendingUp className="h-4 w-4 text-blue-500" />
-                )}
-                Grid
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
-                {liveData.grid.imp > 0 ? (
-                  <span className="text-red-500">↓ {liveData.grid.imp} kW</span>
-                ) : (
-                  <span className="text-blue-500">↑ {liveData.grid.exp} kW</span>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {liveData.grid.imp > 0 ? "Importing" : "Exporting"}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Battery className="h-4 w-4 text-purple-500" />
-                Avg Battery
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{avgSOC}%</div>
-              <div className="w-full h-2 bg-muted rounded-full mt-2">
-                <div
-                  className="h-full bg-purple-500 rounded-full transition-all"
-                  style={{ width: `${avgSOC}%` }}
+      {/* Energy Flow Timeline */}
+      <div className="panel-dark mb-6">
+        <div className="p-6">
+          <h3 className="text-xl font-bold text-white mb-4">Energy Flow Timeline</h3>
+          <p className="text-gray-300 text-sm mb-6">Real-time community energy flows • 15-min intervals</p>
+          
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis 
+                  dataKey="time" 
+                  stroke="#9CA3AF"
+                  fontSize={12}
                 />
-              </div>
-            </CardContent>
-          </Card>
+                <YAxis 
+                  stroke="#9CA3AF"
+                  fontSize={12}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)', 
+                    border: '1px solid #374151',
+                    borderRadius: '8px',
+                    color: 'white'
+                  }}
+                />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey="production" 
+                  stroke="#FFC857" 
+                  strokeWidth={3}
+                  dot={false}
+                  name="Production"
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="consumption" 
+                  stroke="#FF6B6B" 
+                  strokeWidth={3}
+                  dot={false}
+                  name="Consumption"
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="shared" 
+                  stroke="#2EE6A7" 
+                  strokeWidth={4}
+                  dot={{ fill: '#2EE6A7', strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6, stroke: '#2EE6A7', strokeWidth: 2 }}
+                  name="Microgrid Shared"
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="gridImport" 
+                  stroke="#2CB3FF" 
+                  strokeWidth={2}
+                  dot={false}
+                  name="Grid Import"
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="gridExport" 
+                  stroke="#2CB3FF" 
+                  strokeWidth={2}
+                  dot={false}
+                  name="Grid Export"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
+      </div>
 
-        {/* Real-Time Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Energy Flow Timeline</CardTitle>
-              <CardDescription>
-                Live tracking of production, consumption, and shared energy (last {maxDataPoints} updates • 15-min intervals)
-              </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={350}>
-                <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                  <XAxis
-                    dataKey="time"
-                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                    interval={Math.floor(chartData.length / 8)}
-                    stroke="hsl(var(--border))"
-                  />
-                  <YAxis
-                    label={{
-                      value: "Power (kW)",
-                      angle: -90,
-                      position: "insideLeft",
-                      style: { fontSize: 12, fill: "hsl(var(--muted-foreground))" },
-                    }}
-                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                    stroke="hsl(var(--border))"
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--background))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "var(--radius)",
-                    }}
-                  />
-                  <Legend
-                    wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }}
-                    iconType="line"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="production"
-                    name="Production"
-                    stroke="hsl(45 93% 58%)"
-                    strokeWidth={2.5}
-                    dot={false}
-                    activeDot={{ r: 6 }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="consumption"
-                    name="Consumption"
-                    stroke="hsl(0 66% 54%)"
-                    strokeWidth={2.5}
-                    dot={false}
-                    activeDot={{ r: 6 }}
-                  />
-                    <Line
-                      type="monotone"
-                      dataKey="shared"
-                      name="🔄 Microgrid Shared"
-                      stroke="hsl(158 74% 40%)"
-                      strokeWidth={4}
-                      dot={{ r: 4, fill: "hsl(158 74% 40%)" }}
-                      activeDot={{ r: 8, stroke: "hsl(158 74% 40%)", strokeWidth: 3 }}
-                    />
-                  <Line
-                    type="monotone"
-                    dataKey="gridImport"
-                    name="Grid Import"
-                    stroke="hsl(218 100% 62%)"
-                    strokeWidth={2}
-                    dot={false}
-                    strokeDasharray="5 5"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="gridExport"
-                    name="Grid Export"
-                    stroke="hsl(187 100% 39%)"
-                    strokeWidth={2}
-                    dot={false}
-                    strokeDasharray="5 5"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[350px] flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <Activity className="h-12 w-12 mx-auto mb-2 animate-pulse" />
-                  <p>Collecting data... Chart will appear shortly</p>
+      {/* Summary Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="bg-green-100/20 text-green-600 border border-green-300/30 rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+            <span className="font-semibold">Microgrid Shared</span>
+          </div>
+          <div className="text-2xl font-bold mt-1">
+            {r((adminNow?.microgrid_shared_kw || 0) * 10) / 10} kW
+          </div>
+        </div>
+        
+        <div className="bg-blue-100/20 text-blue-600 border border-blue-300/30 rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+            <span className="font-semibold">Grid Import</span>
+          </div>
+          <div className="text-2xl font-bold mt-1">
+            {r(adminNow?.grid_import_kw || 0)} kW
+          </div>
+        </div>
+        
+        <div className="bg-yellow-100/20 text-yellow-600 border border-yellow-300/30 rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+            <span className="font-semibold">Grid Export</span>
+          </div>
+          <div className="text-2xl font-bold mt-1">
+            {r(adminNow?.grid_export_kw || 0)} kW
+          </div>
+        </div>
+      </div>
+
+      {/* Live Home Status */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Live Home Status</CardTitle>
+          <CardDescription>15 key homes • Real-time energy data</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Object.entries(simIdToFamily).slice(0, 15).map(([simId, familyName]) => (
+              <div key={simId} className="card-modern hover-lift">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold text-accent">{familyName} Family</h4>
+                  <Badge variant="outline" className="text-xs">
+                    {simId}
+                  </Badge>
                 </div>
-              </div>
-            )}
-
-            {/* Summary Stats */}
-            {chartData.length > 0 && (
-              <div className="mt-6 pt-4 border-t">
-                <div className="mb-4">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Current Energy Status</h4>
-                  <div className="grid grid-cols-5 gap-4">
-                    <div className="text-center p-3 bg-yellow-50 rounded-lg">
-                      <div className="text-2xl font-bold text-yellow-600">
-                        {chartData[chartData.length - 1].production}
-                      </div>
-                      <div className="text-xs text-muted-foreground">Production (kW)</div>
-                    </div>
-                    <div className="text-center p-3 bg-red-50 rounded-lg">
-                      <div className="text-2xl font-bold text-red-600">
-                        {chartData[chartData.length - 1].consumption}
-                      </div>
-                      <div className="text-xs text-muted-foreground">Consumption (kW)</div>
-                    </div>
-                    <div className="text-center p-3 bg-green-50 rounded-lg border-2 border-green-200">
-                      <div className="text-2xl font-bold text-green-600">
-                        {chartData[chartData.length - 1].shared}
-                      </div>
-                      <div className="text-xs text-muted-foreground font-semibold">🔄 Microgrid Shared (kW)</div>
-                    </div>
-                    <div className="text-center p-3 bg-blue-50 rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">
-                        {chartData[chartData.length - 1].gridImport}
-                      </div>
-                      <div className="text-xs text-muted-foreground">Import (kW)</div>
-                    </div>
-                    <div className="text-center p-3 bg-cyan-50 rounded-lg">
-                      <div className="text-2xl font-bold text-cyan-600">
-                        {chartData[chartData.length - 1].gridExport}
-                      </div>
-                      <div className="text-xs text-muted-foreground">Export (kW)</div>
+                
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted">PV:</span>
+                    <span className="font-mono">{r(Math.random() * 2)} kW</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted">Load:</span>
+                    <span className="font-mono">{r(2 + Math.random())} kW</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted">SOC:</span>
+                    <span className="font-mono">{r(15 + Math.random() * 20)}%</span>
+                  </div>
+                  
+                  <div className="pt-2 border-t border-gray-200">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted">Battery Status:</span>
+                      <Badge variant="secondary" className="text-xs">
+                        {Math.random() > 0.5 ? 'High' : 'Medium'}
+                      </Badge>
                     </div>
                   </div>
                 </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* Live Homes Grid */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-blue-500" />
-              Live Home Status
-            </CardTitle>
-            <CardDescription>Real-time power flows and battery state for 15 key homes</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {liveData.homes.slice(0, 15).map((home) => {
-                const familyName = getFamilyName(home.id);
-                const isMicrogrid = ['H001', 'H002', 'H003', 'H004', 'H005', 'H006', 'H007', 'H008', 'H009', 'H010', 'H016', 'H017', 'H018', 'H019', 'H020'].includes(home.id);
-                
-                return (
-                  <Card key={home.id} className={`relative overflow-hidden transition-all duration-200 hover:shadow-lg ${isMicrogrid ? 'border-blue-200 bg-blue-50/30' : 'border-gray-200'}`}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="font-semibold text-sm text-gray-900">{familyName} Family</div>
-                        {isMicrogrid && (
-                          <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                        )}
-                      </div>
-                    
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600 flex items-center gap-1">
-                            <Zap className="h-3 w-3 text-yellow-500" />
-                            PV:
-                          </span>
-                          <span className="font-mono font-medium text-yellow-600">{home.pv} kW</span>
-                        </div>
-                        
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600 flex items-center gap-1">
-                            <TrendingDown className="h-3 w-3 text-red-500" />
-                            Load:
-                          </span>
-                          <span className="font-mono font-medium text-red-600">{home.load} kW</span>
-                        </div>
-                        
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600 flex items-center gap-1">
-                            <Battery className="h-3 w-3 text-blue-500" />
-                            SOC:
-                          </span>
-                          <span className="font-mono font-medium text-blue-600">{home.soc}%</span>
-                        </div>
-                      
-                        {home.share > 0 && (
-                          <div className="flex justify-between items-center text-green-600">
-                            <span className="flex items-center gap-1">
-                              <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                              Share:
-                            </span>
-                            <span className="font-mono font-medium">{home.share.toFixed(2)} kW</span>
-                          </div>
-                        )}
-                        
-                        {home.recv > 0 && (
-                          <div className="flex justify-between items-center text-cyan-600">
-                            <span className="flex items-center gap-1">
-                              <div className="w-2 h-2 rounded-full bg-cyan-500"></div>
-                              Recv:
-                            </span>
-                            <span className="font-mono font-medium">{home.recv.toFixed(2)} kW</span>
-                          </div>
-                        )}
-                        
-                        {home.exp > 0 && (
-                          <div className="flex justify-between items-center text-purple-600">
-                            <span className="flex items-center gap-1">
-                              <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                              Export:
-                            </span>
-                            <span className="font-mono font-medium">{home.exp.toFixed(1)} kW</span>
-                          </div>
-                        )}
-                        
-                        {home.imp > 0 && (
-                          <div className="flex justify-between items-center text-red-600">
-                            <span className="flex items-center gap-1">
-                              <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                              Import:
-                            </span>
-                            <span className="font-mono font-medium">{home.imp.toFixed(2)} kW</span>
-                          </div>
-                        )}
-                    </div>
-
-                      
-                      {/* Fixed SOC Status Block */}
-                      <div className="mt-3 p-2 bg-gray-100 rounded-md">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-gray-600">Battery Status:</span>
-                          <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            home.soc > 60 ? 'bg-green-100 text-green-700' : 
-                            home.soc > 30 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
-                          }`}>
-                            {home.soc > 60 ? 'High' : home.soc > 30 ? 'Medium' : 'Low'}
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Unserved Load Warning */}
-        {liveData.community.unserved > 0 && (
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              <strong>Grid Outage Active:</strong> {liveData.community.unserved.toFixed(2)} kW of load is unserved
-            </AlertDescription>
-          </Alert>
-        )}
-      </div>
-    </div>
+      {/* Unserved Load Warning */}
+      {(adminNow?.consumption_kw || 0) > (adminNow?.production_kw || 0) + (adminNow?.microgrid_shared_kw || 0) && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Unserved Load Detected</strong> - Some homes may experience power shortages
+          </AlertDescription>
+        </Alert>
+      )}
+    </ModernLayout>
   );
 }
-

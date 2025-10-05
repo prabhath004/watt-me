@@ -1,6 +1,8 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { MapPin, Zap, Battery, TrendingUp, TrendingDown } from 'lucide-react';
+import { normalizeHomeId, r, validateMapBindings } from '@/lib/homeUtils';
+import { useHomeSafe } from '@/hooks/useHomeSafe';
 
 interface SSEHome {
   id: string;
@@ -27,19 +29,101 @@ interface HousePosition {
 
 const InteractiveMap = ({ homes }: InteractiveMapProps) => {
   const [hoveredHouse, setHoveredHouse] = useState<string | null>(null);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [mapWarning, setMapWarning] = useState<string | null>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [mapContainer, setMapContainer] = useState<HTMLDivElement | null>(null);
 
-  const handleMouseEnter = useCallback((houseId: string) => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-    }
-    setHoveredHouse(houseId);
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+    };
   }, []);
 
+  // Validate map bindings at boot
+  useEffect(() => {
+    const markerIds = housePositions.map(h => normalizeHomeId(h.id));
+    const storeIds = homes.map(h => normalizeHomeId(h.id));
+    validateMapBindings(markerIds, storeIds);
+  }, [homes]);
+
+  // Dev command to scan all map hovers
+  const scanMapHovers = useCallback(() => {
+    console.log('[Map Scan] Starting hover test...');
+    let errors = 0;
+    let scanned = 0;
+    
+    housePositions.forEach((house, index) => {
+      try {
+        console.log(`[Map Scan] Testing house ${index + 1}/${housePositions.length}: ${house.id}`);
+        
+        // Simulate hover
+        const homeData = useHomeSafe(house.id, homes);
+        console.log(`[Map Scan] ${house.id}:`, {
+          id: homeData.id,
+          member: homeData.member,
+          pv_kw: homeData.now.pv_kw,
+          load_kw: homeData.now.load_kw,
+          soc_pct: homeData.now.soc_pct
+        });
+        
+        scanned++;
+      } catch (error) {
+        console.error(`[Map Scan] Error on ${house.id}:`, error);
+        errors++;
+      }
+    });
+    
+    console.log(`[Map Scan] Complete: Scanned ${scanned} markers — ${errors} errors`);
+    return { scanned, errors };
+  }, [homes]);
+
+  // Expose scan function to window for dev testing
+  useEffect(() => {
+    (window as any).scanMapHovers = scanMapHovers;
+    return () => {
+      delete (window as any).scanMapHovers;
+    };
+  }, [scanMapHovers]);
+
+  // Defensive event handler that never throws
+  const handleMouseEnter = useCallback((houseId: string) => {
+    try {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+      
+      const normalizedId = normalizeHomeId(houseId);
+      const found = homes.find(h => normalizeHomeId(h.id) === normalizedId);
+      
+      console.log('[Map Hover]', { 
+        targetId: houseId, 
+        normalizedId, 
+        found: !!found,
+        homesCount: homes.length 
+      });
+      
+      setHoveredHouse(houseId);
+      setMapError(null);
+      setMapWarning(null);
+    } catch (error) {
+      console.error('[Map] hover error', error, { houseId });
+      setMapWarning('Hover error — see console');
+    }
+  }, [homes]);
+
   const handleMouseLeave = useCallback(() => {
-    hoverTimeoutRef.current = setTimeout(() => {
-      setHoveredHouse(null);
-    }, 100);
+    try {
+      hoverTimeoutRef.current = setTimeout(() => {
+        setHoveredHouse(null);
+      }, 150); // Debounce for smooth interaction
+    } catch (error) {
+      console.error('[Map] mouse leave error', error);
+      setMapWarning('Hover error — see console');
+    }
   }, []);
 
   // House positions on the map (matching the blue squares in your map)
@@ -113,41 +197,143 @@ const InteractiveMap = ({ homes }: InteractiveMapProps) => {
     'Ward': 'H025'
   };
 
-  const getHouseData = (houseId: string) => {
-    // Convert family name to simulation ID
-    const simId = familyToSimId[houseId];
-    if (!simId) return null;
+  // Safe tooltip component
+  const SafeTooltip = ({ houseId }: { houseId: string }) => {
+    const homeData = useHomeSafe(houseId, homes);
+    const house = housePositions.find(h => h.id === houseId);
+    const isNonMember = house?.type === '101mi' || house?.type === 'special';
     
-    return homes.find(home => home.id === simId);
+    if (isNonMember) {
+      return (
+        <div className="space-y-3">
+          <div className="font-semibold text-base text-gray-900 border-b border-gray-200 pb-2 flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+            {houseId} Family
+          </div>
+          
+          <div className="text-sm text-gray-600">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+              <span className="font-medium">Not in microgrid</span>
+            </div>
+            <p className="text-xs">No sharing data available</p>
+          </div>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="space-y-3">
+        <div className="font-semibold text-base text-gray-900 border-b border-gray-200 pb-2 flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+          {houseId} Family
+        </div>
+        
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between items-center">
+            <span className="text-gray-600 flex items-center gap-2">
+              <Zap className="h-3 w-3 text-green-500" />
+              PV:
+            </span>
+            <span className="font-mono text-green-600 font-medium">
+              {r(homeData.now.pv_kw)} kW
+            </span>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <span className="text-gray-600 flex items-center gap-2">
+              <TrendingDown className="h-3 w-3 text-yellow-500" />
+              Load:
+            </span>
+            <span className="font-mono text-yellow-600 font-medium">
+              {r(homeData.now.load_kw)} kW
+            </span>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <span className="text-gray-600 flex items-center gap-2">
+              <Battery className="h-3 w-3 text-blue-500" />
+              SOC:
+            </span>
+            <span className="font-mono text-blue-600 font-medium">
+              {r(homeData.now.soc_pct)}%
+            </span>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <span className="text-gray-600 flex items-center gap-2">
+              <TrendingUp className="h-3 w-3 text-red-500" />
+              Import:
+            </span>
+            <span className="font-mono text-red-600 font-medium">
+              {r(homeData.now.grid_in_kw)} kW
+            </span>
+          </div>
+          
+          {homeData.now.share_kw > 0 && (
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600 flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                Sharing:
+              </span>
+              <span className="font-mono text-green-600 font-medium">
+                {r(homeData.now.share_kw)} kW
+              </span>
+            </div>
+          )}
+          
+          {homeData.now.recv_kw > 0 && (
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600 flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-cyan-500"></div>
+                Receiving:
+              </span>
+              <span className="font-mono text-cyan-600 font-medium">
+                {r(homeData.now.recv_kw)} kW
+              </span>
+            </div>
+          )}
+          
+          {homeData.now.grid_out_kw > 0 && (
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600 flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+                Exporting:
+              </span>
+              <span className="font-mono text-purple-600 font-medium">
+                {r(homeData.now.grid_out_kw)} kW
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
   const getHouseColor = (house: HousePosition) => {
-    const data = getHouseData(house.id);
-    if (!data) return '#94A3B8'; // Soft gray for no data
-
+    const homeData = useHomeSafe(house.id, homes);
+    
     // Soft, translucent colors for glass-like effect
-    if (data.pv > 0) return '#34D399'; // Soft green for producing
-    if (data.share > 0) return '#60A5FA'; // Soft blue for sharing
-    if (data.imp > 0) return '#F87171'; // Soft red for importing
+    if (homeData.now.pv_kw > 0) return '#34D399'; // Soft green for producing
+    if (homeData.now.share_kw > 0) return '#60A5FA'; // Soft blue for sharing
+    if (homeData.now.grid_in_kw > 0) return '#F87171'; // Soft red for importing
     return '#60A5FA'; // Soft blue for neutral
   };
 
   const getHouseBorderColor = (house: HousePosition) => {
-    const data = getHouseData(house.id);
-    if (!data) return '#CBD5E1';
+    const homeData = useHomeSafe(house.id, homes);
 
     // Soft border colors based on SOC
-    if (data.soc > 60) return '#34D399'; // Soft green
-    if (data.soc > 30) return '#FBBF24'; // Soft yellow
+    if (homeData.now.soc_pct > 60) return '#34D399'; // Soft green
+    if (homeData.now.soc_pct > 30) return '#FBBF24'; // Soft yellow
     return '#F87171'; // Soft red
   };
 
   const getHouseSize = (house: HousePosition) => {
-    const data = getHouseData(house.id);
-    if (!data) return 16;
+    const homeData = useHomeSafe(house.id, homes);
 
     // Size based on total power (PV + Load)
-    const totalPower = data.pv + data.load;
+    const totalPower = homeData.now.pv_kw + homeData.now.load_kw;
     if (totalPower > 5) return 20;
     if (totalPower > 3) return 18;
     return 16;
@@ -158,20 +344,24 @@ const InteractiveMap = ({ homes }: InteractiveMapProps) => {
       <CardHeader>
         <div className="flex items-center gap-2">
           <MapPin className="h-5 w-5 text-primary" />
-          <CardTitle>Interactive Community Map</CardTitle>
+          <CardTitle>Sunset Ridge Community</CardTitle>
         </div>
         <CardDescription>
-          Hover over houses to see real-time energy data
+          Real-time microgrid energy monitoring
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="relative rounded-lg overflow-hidden" style={{ height: '600px' }}>
+        <div 
+          ref={setMapContainer}
+          className="relative rounded-lg overflow-hidden" 
+          style={{ height: '600px' }}
+        >
           {/* Map Background */}
           <img
             src="/map.png"
             alt="Lenah Mill Community Map"
             className="absolute inset-0 w-full h-full object-contain"
-            style={{ opacity: 0.9 }}
+            style={{ opacity: 0.9, pointerEvents: 'none' }}
           />
           
           {/* Interactive SVG Overlay */}
@@ -179,7 +369,8 @@ const InteractiveMap = ({ homes }: InteractiveMapProps) => {
             width="100%"
             height="100%"
             viewBox="0 0 1000 800"
-            className="absolute inset-0"
+            className="absolute inset-0 z-10"
+            style={{ pointerEvents: 'auto' }}
             preserveAspectRatio="xMidYMid meet"
           >
             {/* Semi-transparent overlay */}
@@ -191,20 +382,40 @@ const InteractiveMap = ({ homes }: InteractiveMapProps) => {
               const size = getHouseSize(house);
               const isHovered = hoveredHouse === house.id;
               const isInteractive = house.type === 'house'; // Only blue houses are interactive
+              const isNonMember = house.type === '101mi' || house.type === 'special';
               
               return (
                 <g key={house.id}>
                   {/* Interactive hit area - only for blue houses */}
                   {isInteractive && (
-                    <rect
-                      x={house.x - size}
-                      y={house.y - size}
-                      width={size * 2}
-                      height={size * 2}
+                    <circle
+                      cx={house.x}
+                      cy={house.y}
+                      r="20"
                       fill="transparent"
                       onMouseEnter={() => handleMouseEnter(house.id)}
                       onMouseLeave={handleMouseLeave}
-                      style={{ cursor: 'pointer' }}
+                      style={{ 
+                        cursor: 'pointer',
+                        pointerEvents: 'auto'
+                      }}
+                      data-home-id={normalizeHomeId(house.id)}
+                    />
+                  )}
+                  
+                  {/* Non-member house indicator */}
+                  {isNonMember && (
+                    <circle
+                      cx={house.x}
+                      cy={house.y}
+                      r="15"
+                      fill="transparent"
+                      onMouseEnter={() => handleMouseEnter(house.id)}
+                      onMouseLeave={handleMouseLeave}
+                      style={{ 
+                        cursor: 'help',
+                        pointerEvents: 'auto'
+                      }}
                     />
                   )}
                   
@@ -302,122 +513,84 @@ const InteractiveMap = ({ homes }: InteractiveMapProps) => {
             })}
           </svg>
           
-          {/* Hover Tooltip - Only for Interactive Houses */}
+          {/* Error Banner */}
+          {mapError && (
+            <div className="absolute top-4 right-4 bg-red-100/90 text-red-700 px-3 py-2 rounded-lg text-sm border border-red-300/50 z-30">
+              {mapError}
+            </div>
+          )}
+
+          {/* Warning Banner */}
+          {mapWarning && (
+            <div className="absolute top-4 left-4 bg-yellow-100/90 text-yellow-700 px-3 py-2 rounded-lg text-sm border border-yellow-300/50 z-30">
+              {mapWarning}
+            </div>
+          )}
+
+          {/* Safe Hover Tooltip */}
           {hoveredHouse && (() => {
             const house = housePositions.find(h => h.id === hoveredHouse);
-            if (!house || house.type !== 'house') return null; // Only show tooltip for blue houses
+            if (!house) return null;
+            
+            // Smart positioning to avoid edges
+            const containerWidth = mapContainer?.clientWidth || 800;
+            const containerHeight = mapContainer?.clientHeight || 600;
+            const tooltipWidth = 220;
+            const tooltipHeight = 200;
+            
+            let left = house.x * 0.8 + 40;
+            let top = house.y * 0.8 - 120;
+            
+            // Adjust if too far right
+            if (left + tooltipWidth > containerWidth) {
+              left = house.x * 0.8 - tooltipWidth - 20;
+            }
+            
+            // Adjust if too far up
+            if (top < 20) {
+              top = house.y * 0.8 + 40;
+            }
             
             return (
               <div
                 className="absolute bg-white/95 backdrop-blur-md text-gray-800 p-4 rounded-xl shadow-2xl border border-gray-200/50 z-20 pointer-events-none"
                 style={{
-                  left: `${Math.min(house.x * 0.8 + 40, 500)}px`,
-                  top: `${Math.max(house.y * 0.8 - 120, 20)}px`,
+                  left: `${Math.max(20, Math.min(left, containerWidth - tooltipWidth - 20))}px`,
+                  top: `${Math.max(20, Math.min(top, containerHeight - tooltipHeight - 20))}px`,
                   maxWidth: '220px',
                   minWidth: '180px'
                 }}
               >
-              {(() => {
-                const data = getHouseData(hoveredHouse);
-                if (!data) return <div>No data available</div>;
-                
-                return (
-                  <div className="space-y-3">
-                    <div className="font-semibold text-base text-gray-900 border-b border-gray-200 pb-2 flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                      {hoveredHouse} Family
-                    </div>
-                    
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600 flex items-center gap-2">
-                          <Zap className="h-3 w-3 text-green-500" />
-                          PV:
-                        </span>
-                        <span className="font-mono text-green-600 font-medium">{data.pv} kW</span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600 flex items-center gap-2">
-                          <TrendingDown className="h-3 w-3 text-yellow-500" />
-                          Load:
-                        </span>
-                        <span className="font-mono text-yellow-600 font-medium">{data.load} kW</span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600 flex items-center gap-2">
-                          <Battery className="h-3 w-3 text-blue-500" />
-                          SOC:
-                        </span>
-                        <span className="font-mono text-blue-600 font-medium">{data.soc}%</span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600 flex items-center gap-2">
-                          <TrendingUp className="h-3 w-3 text-red-500" />
-                          Import:
-                        </span>
-                        <span className="font-mono text-red-600 font-medium">{data.imp.toFixed(2)} kW</span>
-                      </div>
-                      
-                      {data.share > 0 && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600 flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                            Sharing:
-                          </span>
-                          <span className="font-mono text-green-600 font-medium">{data.share.toFixed(2)} kW</span>
-                        </div>
-                      )}
-                      
-                      {data.recv > 0 && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600 flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-cyan-500"></div>
-                            Receiving:
-                          </span>
-                          <span className="font-mono text-cyan-600 font-medium">{data.recv.toFixed(2)} kW</span>
-                        </div>
-                      )}
-                      
-                      {data.exp > 0 && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600 flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-                            Exporting:
-                          </span>
-                          <span className="font-mono text-purple-600 font-medium">{data.exp.toFixed(2)} kW</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
+                <SafeTooltip houseId={hoveredHouse} />
               </div>
             );
           })()}
           
-          {/* Glass Legend */}
-          <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md rounded-xl p-4 text-white text-xs border border-white/20 shadow-2xl">
-            <div className="text-xs font-semibold mb-3 text-blue-200">🔮 Glass Microgrid Houses</div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-3 h-3 rounded" style={{backgroundColor: '#34D399', opacity: 0.8}}></div>
-              <span>Producing (PV)</span>
+          {/* Integrated Map Legend */}
+          <div className="absolute bottom-6 left-6 bg-white/95 backdrop-blur-sm rounded-lg p-4 text-gray-800 text-sm border border-gray-200/50 shadow-lg max-w-xs">
+            <div className="text-sm font-bold mb-3 text-gray-900 flex items-center gap-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              Sunset Ridge Microgrid
             </div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-3 h-3 rounded" style={{backgroundColor: '#60A5FA', opacity: 0.8}}></div>
-              <span>Sharing Energy</span>
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-4 rounded" style={{backgroundColor: '#34D399', opacity: 0.9}}></div>
+                <span className="text-sm font-medium">Producing (PV)</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-4 rounded" style={{backgroundColor: '#60A5FA', opacity: 0.9}}></div>
+                <span className="text-sm font-medium">Sharing Energy</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-4 rounded" style={{backgroundColor: '#F87171', opacity: 0.9}}></div>
+                <span className="text-sm font-medium">Importing</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full animate-pulse" style={{backgroundColor: '#34D399', opacity: 0.9}}></div>
+                <span className="text-sm font-medium">Active Energy Flow</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-3 h-3 rounded" style={{backgroundColor: '#F87171', opacity: 0.8}}></div>
-              <span>Importing</span>
-            </div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full animate-pulse" style={{backgroundColor: '#34D399', opacity: 0.8}}></div>
-              <span>Active Energy Flow</span>
-            </div>
-            <div className="text-xs text-gray-300 mt-2 italic">
+            <div className="text-xs text-gray-600 mt-3 pt-2 border-t border-gray-200">
               White/Yellow houses are not part of the microgrid
             </div>
           </div>

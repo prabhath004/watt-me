@@ -6,6 +6,9 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "sim": "tsx src/simple-server.ts",
+    "sim:watch": "tsx watch src/simple-server.ts",
+    "start:sim": "npm run sim",
     "build": "tsc",
     "start": "node dist/server.js"
   },
