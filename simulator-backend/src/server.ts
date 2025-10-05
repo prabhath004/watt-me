@@ -263,7 +263,7 @@ app.post("/sim/resume", (req, res) => {
 app.listen(PORT, () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════════╗
-║  🏘️  NeighborGrid Live Simulator                         ║
+║  🏘️  ShareWatt Live Simulator                         ║
 ║  ⚡ Server running on http://localhost:${PORT}              ║
 ║  📊 Admin state: GET /state/admin                         ║
 ║  👤 User state: GET /state/user/:homeId                   ║

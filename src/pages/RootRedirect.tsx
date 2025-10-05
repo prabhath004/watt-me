@@ -26,7 +26,7 @@ export default function RootRedirect() {
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold mb-4 flex items-center justify-center gap-3">
             <Zap className="h-10 w-10 text-primary" />
-            NeighborGrid Live Simulator
+            ShareWatt Live Simulator
           </h1>
           <p className="text-xl text-muted-foreground">
             Real-time energy management dashboard with live simulation

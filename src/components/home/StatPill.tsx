@@ -20,33 +20,38 @@ export function StatPill({
     switch (tone) {
       case 'solar':
         return {
-          valueColor: TOKENS.solar,
-          bgColor: 'bg-yellow-50 dark:bg-yellow-950/20',
-          borderColor: 'border-yellow-200 dark:border-yellow-800',
+          valueColor: '#f59e0b',
+          bgColor: 'bg-white dark:bg-gray-900',
+          borderColor: 'border-3 border-yellow-500 dark:border-yellow-400',
+          shadowColor: 'shadow-[0_0_0_2px_rgba(234,179,8,0.2)] hover:shadow-[0_0_0_3px_rgba(234,179,8,0.3)]',
         };
       case 'battery':
         return {
-          valueColor: TOKENS.purple,
-          bgColor: 'bg-purple-50 dark:bg-purple-950/20',
-          borderColor: 'border-purple-200 dark:border-purple-800',
+          valueColor: '#a855f7',
+          bgColor: 'bg-white dark:bg-gray-900',
+          borderColor: 'border-3 border-purple-500 dark:border-purple-400',
+          shadowColor: 'shadow-[0_0_0_2px_rgba(168,85,247,0.2)] hover:shadow-[0_0_0_3px_rgba(168,85,247,0.3)]',
         };
       case 'export':
         return {
-          valueColor: TOKENS.teal,
-          bgColor: 'bg-teal-50 dark:bg-teal-950/20',
-          borderColor: 'border-teal-200 dark:border-teal-800',
+          valueColor: '#06b6d4',
+          bgColor: 'bg-white dark:bg-gray-900',
+          borderColor: 'border-3 border-cyan-500 dark:border-cyan-400',
+          shadowColor: 'shadow-[0_0_0_2px_rgba(6,182,212,0.2)] hover:shadow-[0_0_0_3px_rgba(6,182,212,0.3)]',
         };
       case 'import':
         return {
-          valueColor: TOKENS.red,
-          bgColor: 'bg-red-50 dark:bg-red-950/20',
-          borderColor: 'border-red-200 dark:border-red-800',
+          valueColor: '#ef4444',
+          bgColor: 'bg-white dark:bg-gray-900',
+          borderColor: 'border-3 border-red-500 dark:border-red-400',
+          shadowColor: 'shadow-[0_0_0_2px_rgba(239,68,68,0.2)] hover:shadow-[0_0_0_3px_rgba(239,68,68,0.3)]',
         };
       default:
         return {
-          valueColor: TOKENS.ink,
-          bgColor: 'bg-gray-50 dark:bg-gray-950/20',
-          borderColor: 'border-gray-200 dark:border-gray-800',
+          valueColor: '#374151',
+          bgColor: 'bg-white dark:bg-gray-900',
+          borderColor: 'border-3 border-gray-500 dark:border-gray-400',
+          shadowColor: 'shadow-[0_0_0_2px_rgba(107,114,128,0.2)] hover:shadow-[0_0_0_3px_rgba(107,114,128,0.3)]',
         };
     }
   };
@@ -56,29 +61,25 @@ export function StatPill({
   return (
     <div 
       className={`
-        rounded-2xl border bg-white shadow-sm px-3 py-2 md:px-4 md:py-3
-        hover:shadow-md transition-all duration-200 hover:-translate-y-0.5
-        ${styles.bgColor} ${styles.borderColor}
+        ${styles.bgColor} ${styles.borderColor} ${styles.shadowColor}
+        px-4 py-3 md:px-6 md:py-4
+        transition-all duration-200 hover:-translate-y-1
         ${align === 'right' ? 'text-right' : 'text-left'}
       `}
-      style={{ 
-        borderRadius: TOKENS.radius,
-        boxShadow: TOKENS.shadow,
-      }}
     >
-      <div className="flex items-center gap-2 mb-1">
+      <div className="flex items-center gap-3 mb-2">
         {icon && (
-          <div className="text-[var(--muted)]">
+          <div className="text-gray-600 dark:text-gray-400">
             {icon}
           </div>
         )}
-        <h3 className={`${TYPE.label} text-[var(--muted)] uppercase tracking-wide`}>
+        <h3 className="text-base font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider">
           {title}
         </h3>
       </div>
       
       <div 
-        className={`${TYPE.value} font-mono tabular-nums`}
+        className="text-2xl font-black font-mono tabular-nums"
         style={{ color: styles.valueColor }}
       >
         {value}
@@ -87,14 +88,14 @@ export function StatPill({
   );
 }
 
-// Convenience components for specific stat types
+// Sharp Modern Convenience components for specific stat types
 export function SolarPill({ kw }: { kw: number }) {
   return (
     <StatPill
       title="Solar"
       value={`${formatKw(kw)} kW`}
       tone="solar"
-      icon={<div className="w-2 h-2 rounded-full bg-yellow-400" />}
+      icon={<div className="w-4 h-4 bg-yellow-500 border-2 border-yellow-600 dark:border-yellow-400" />}
     />
   );
 }
@@ -105,7 +106,7 @@ export function HomePill({ kw }: { kw: number }) {
       title="Home"
       value={`${formatKw(kw)} kW`}
       tone="neutral"
-      icon={<div className="w-2 h-2 rounded-full bg-gray-400" />}
+      icon={<div className="w-4 h-4 bg-gray-500 border-2 border-gray-600 dark:border-gray-400" />}
     />
   );
 }
@@ -116,7 +117,7 @@ export function BatteryPill({ soc }: { soc: number }) {
       title="Battery"
       value={`${formatPercent(soc)}%`}
       tone="battery"
-      icon={<div className="w-2 h-2 rounded-full bg-purple-400" />}
+      icon={<div className="w-4 h-4 bg-purple-500 border-2 border-purple-600 dark:border-purple-400" />}
     />
   );
 }
@@ -130,7 +131,7 @@ export function GridPill({ imp, exp }: { imp: number; exp: number }) {
       title="Grid"
       value={`${value} kW`}
       tone={isExporting ? "export" : "import"}
-      icon={<div className={`w-2 h-2 rounded-full ${isExporting ? 'bg-teal-400' : 'bg-red-400'}`} />}
+      icon={<div className={`w-4 h-4 border-2 ${isExporting ? 'bg-cyan-500 border-cyan-600 dark:border-cyan-400' : 'bg-red-500 border-red-600 dark:border-red-400'}`} />}
     />
   );
 }

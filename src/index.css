@@ -1,195 +1,206 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  /* Design tokens */
-  --bg: #EDEFEA;
-  --panel: #0F1214;
-  --card: #FFFFFF;
-  --muted: #A9B1AB;
-  --brand: #B5FF66;
-  --brand-2: #9DF0AE;
-  --accent: #111;
-  --warn: #FFB020;
-  --error: #F45B69;
-  --ok: #2BD576;
-  --grid-blue: #2CB3FF;
-  --cons-red: #FF6B6B;
-  --prod-gold: #FFC857;
-  --share-green: #2EE6A7;
-  
-  /* Radii & shadow */
-  --radius-lg: 24px;
-  --radius-sm: 12px;
-  --shadow-card: 0 8px 30px rgba(0,0,0,0.08);
-  
-  /* Spacing & type scale */
-  --headline-xl: 44px;
-  --headline-xl-line: 48px;
-  --h2: 28px;
-  --h2-line: 32px;
-  --h3: 20px;
-  --h3-line: 28px;
-  --body: 16px;
-  --body-line: 24px;
-  --mono-small: 14px;
-  --mono-small-line: 20px;
+/* Sustainable Future Light Theme - All colors MUST be HSL */
+
+@layer base {
+  :root {
+    /* Light sustainable theme */
+    --bg: 150 20% 97%;  /* #F6FAF7 soft eco off-white */
+    --surface: 0 0% 100%;  /* #FFFFFF */
+    --surface-2: 144 17% 95%;  /* #F1F5F3 very light green tint panel */
+    --border: 150 15% 89%;  /* #E3EAE6 soft greenish border */
+
+    --text: 180 29% 8%;  /* #0F1A1A charcoal-green */
+    --text-dim: 165 10% 37%;  /* #51605D desaturated green-gray */
+    --muted: 165 7% 53%;  /* #7C8B87 */
+
+    /* Semantic accents */
+    --acc-cyan: 187 100% 39%;  /* #00B6C8 focus/active */
+    --acc-amber: 39 81% 52%;  /* #EAA21E */
+    --acc-blue: 218 100% 62%;  /* #3E8BFF */
+    --acc-red: 0 66% 54%;  /* #DC3E3E */
+    --acc-green: 158 74% 40%;  /* #18B47B primary CTA/success */
+    --tick: 156 37% 85%;  /* #CFE7DC */
+
+    --radius-xl: 16px;
+    --shadow-lg: 0 10px 30px rgba(20, 39, 33, 0.08);
+    --shadow-card: 0 4px 20px rgba(20, 39, 33, 0.06);
+
+    /* Gradients */
+    --gradient-energy: linear-gradient(135deg, hsl(158 74% 40%) 0%, hsl(187 100% 39%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(144 17% 95%) 100%);
+    --gradient-mesh: radial-gradient(ellipse at 30% 50%, hsl(158 74% 40% / 0.08) 0%, transparent 50%),
+                     radial-gradient(ellipse at 70% 80%, hsl(187 100% 39% / 0.06) 0%, transparent 50%);
+
+    /* Radix-compatible mappings for UI components */
+    --background: 150 20% 97%;
+    --foreground: 180 29% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 180 29% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 180 29% 8%;
+    --primary: 158 74% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 144 17% 95%;
+    --secondary-foreground: 180 29% 8%;
+    --muted: 144 17% 95%;
+    --muted-foreground: 165 7% 53%;
+    --accent: 187 100% 39%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 66% 54%;
+    --destructive-foreground: 0 0% 100%;
+    --input: 150 15% 89%;
+    --ring: 187 100% 39%;
+    --radius: 1rem;
+
+    /* Energy-specific (legacy compatibility) */
+    --surplus: 187 100% 39%;
+    --surplus-light: 187 90% 90%;
+    --consumption: 39 81% 52%;
+    --consumption-light: 39 80% 90%;
+    --grid-import: 0 66% 54%;
+    --grid-export: 218 100% 62%;
+    --battery: 158 74% 40%;
+    --battery-reserve: 156 37% 85%;
+
+    /* Chart colors for community dashboard */
+    --chart-1: 45 93% 58%;     /* #F9C74F - Warm yellow for Production */
+    --chart-2: 158 74% 40%;    /* #18B47B - Green for Microgrid */
+    --chart-3: 218 100% 62%;   /* #3E8BFF - Blue for Grid Import */
+    --chart-4: 39 81% 52%;     /* #EAA21E - Amber */
+    --chart-5: 187 100% 39%;   /* #00B6C8 - Cyan */
+
+    --shadow-soft: 0 2px 8px rgba(20, 39, 33, 0.05);
+    --shadow-card: 0 10px 30px rgba(20, 39, 33, 0.08);
+    --shadow-glow: 0 0 20px hsl(187 100% 39% / 0.2);
+  }
 }
 
 @layer base {
   * {
     @apply border-border;
   }
-  
+
   body {
-    @apply bg-[var(--bg)] text-[var(--accent)] font-inter;
-    font-feature-settings: "rlig" 1, "calt" 1;
-  }
-  
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-outfit font-bold;
-  }
-  
-  h1 {
-    font-size: var(--headline-xl);
-    line-height: var(--headline-xl-line);
-  }
-  
-  h2 {
-    font-size: var(--h2);
-    line-height: var(--h2-line);
-  }
-  
-  h3 {
-    font-size: var(--h3);
-    line-height: var(--h3-line);
-  }
-  
-  .font-mono {
-    font-family: 'JetBrains Mono', 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+    font-size: 16px;
+    font-feature-settings: 'tnum' 1;  /* Tabular numerals */
+    background-image: var(--gradient-mesh);
+    background-attachment: fixed;
   }
 }
 
-@layer components {
-  /* Brand gradient */
-  .gradient-brand {
-    background: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%);
-  }
-  
-  /* Card styles */
-  .card-modern {
-    @apply bg-white rounded-lg shadow-lg p-6;
-  }
-  
-  .panel-dark {
-    @apply bg-gray-900 rounded-lg p-6;
-  }
-  
-  /* KPI pill cards */
-  .kpi-pill {
-    @apply card-modern flex items-center gap-4 p-6 hover:scale-[1.01] transition-all duration-200;
-  }
-  
-  /* Big percentage blocks */
-  .big-block {
-    @apply gradient-brand text-black rounded-lg p-8 text-center;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
-  }
-  
-  /* Control chips */
-  .control-chip {
-    @apply rounded-sm px-4 py-2 text-sm font-medium transition-all duration-200;
-  }
-  
-  .control-chip-active {
-    @apply gradient-brand text-black font-semibold;
-  }
-  
-  .control-chip-inactive {
-    @apply bg-gray-100/20 text-gray-500 hover:bg-gray-100/30;
-  }
-  
-  /* Status pills */
-  .status-pill {
-    @apply rounded-full px-3 py-1 text-xs font-medium;
-  }
-  
-  .status-live {
-    @apply bg-green-100/20 text-green-600 border border-green-300/30;
-  }
-  
-  .status-paused {
-    @apply bg-yellow-100/20 text-yellow-600 border border-yellow-300/30;
-  }
-  
-  /* Focus rings */
-  .focus-ring {
-    @apply focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2;
-  }
-  
-  /* Hover effects */
-  .hover-lift {
-    @apply hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200;
-  }
-  
-  /* Skeleton loading */
-  .skeleton {
-    @apply animate-pulse bg-gray-200/20 rounded;
-  }
+:root {
+  /* Tesla-style Light Theme Variables */
+  --bg: #f7f8fb;
+  --surface: #ffffff;
+  --ink: #0b1220;
+  --muted: #6b7280;
+  --accent: #0a84ff;
+  --good: #16a34a;
+  --warn: #f59e0b;
+  --bad: #ef4444;
+  --solar: #fbbf24;
+  --battery: #7c3aed;
 }
 
 @layer utilities {
-  /* Typography utilities */
-  .text-headline {
-    font-size: var(--headline-xl);
-    line-height: var(--headline-xl-line);
-    font-weight: 700;
+  .energy-pulse {
+    animation: energy-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes energy-pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(1.02);
+    }
   }
   
-  .text-h2 {
-    font-size: var(--h2);
-    line-height: var(--h2-line);
-    font-weight: 700;
+  .data-update {
+    animation: data-flash 0.15s ease-out;
   }
   
-  .text-h3 {
-    font-size: var(--h3);
-    line-height: var(--h3-line);
-    font-weight: 600;
+  @keyframes data-flash {
+    0% {
+      background-color: hsl(var(--surplus) / 0.2);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+
+  .tabular-nums {
+    font-feature-settings: 'tnum' 1;
+  }
+
+  /* House animation delays for staggered effects */
+  .delay-75 {
+    animation-delay: 75ms;
   }
   
-  .text-body {
-    font-size: var(--body);
-    line-height: var(--body-line);
-    font-weight: 400;
+  .delay-150 {
+    animation-delay: 150ms;
   }
-  
-  .text-mono {
-    font-size: var(--mono-small);
-    line-height: var(--mono-small-line);
-    font-family: 'JetBrains Mono', monospace;
+
+  /* Glow effect for active solar panels */
+  @keyframes solar-glow {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(234, 179, 8, 0.5);
+    }
+    50% {
+      box-shadow: 0 0 30px rgba(234, 179, 8, 0.8);
+    }
   }
-  
-  /* Color utilities */
-  .text-brand {
-    color: var(--brand);
+
+  .solar-glow {
+    animation: solar-glow 2s ease-in-out infinite;
   }
-  
-  .text-muted {
-    color: var(--muted);
+
+  /* Energy flow animation */
+  @keyframes flow-pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.6;
+      transform: scale(1.1);
+    }
   }
-  
-  .bg-brand {
-    background-color: var(--brand);
+
+  .flow-pulse {
+    animation: flow-pulse 1.5s ease-in-out infinite;
   }
-  
-  .bg-panel {
-    background-color: var(--panel);
+
+  /* Window light flicker */
+  @keyframes window-flicker {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
   }
-  
-  .bg-card {
-    background-color: var(--card);
+
+  .window-flicker {
+    animation: window-flicker 3s ease-in-out infinite;
+  }
+
+  /* Solar panel flicker animation */
+  @keyframes flicker {
+    0% { opacity: 0.6; }
+    50% { opacity: 1; }
+    100% { opacity: 0.7; }
+  }
+
+  .flicker {
+    animation: flicker 1.5s infinite alternate;
   }
 }

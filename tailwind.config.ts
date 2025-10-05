@@ -14,22 +14,6 @@ export default {
     },
     extend: {
       colors: {
-        // Design system colors
-        bg: "#EDEFEA",
-        panel: "#0F1214", 
-        card: "#FFFFFF",
-        muted: "#A9B1AB",
-        brand: "#B5FF66",
-        "brand-2": "#9DF0AE",
-        accent: "#111111",
-        warn: "#FFB020",
-        error: "#F45B69",
-        ok: "#2BD576",
-        "grid-blue": "#2CB3FF",
-        "cons-red": "#FF6B6B",
-        "prod-gold": "#FFC857",
-        "share-green": "#2EE6A7",
-        // Legacy shadcn colors
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -47,9 +31,21 @@ export default {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
         },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
         popover: {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
+        },
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
         },
         surplus: {
           DEFAULT: "hsl(var(--surplus))",
@@ -68,11 +64,6 @@ export default {
           reserve: "hsl(var(--battery-reserve))",
         },
       },
-      fontFamily: {
-        outfit: ['Outfit', 'Montserrat', 'system-ui', 'sans-serif'],
-        inter: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'monospace'],
-      },
       backgroundImage: {
         'gradient-energy': 'var(--gradient-energy)',
         'gradient-card': 'var(--gradient-card)',
@@ -80,13 +71,13 @@ export default {
       },
       boxShadow: {
         'soft': 'var(--shadow-soft)',
-        'card': '0 8px 30px rgba(0,0,0,0.08)',
+        'card': 'var(--shadow-card)',
         'glow': 'var(--shadow-glow)',
       },
       borderRadius: {
-        lg: "24px",
-        md: "12px", 
-        sm: "8px",
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
       },
       keyframes: {
         "accordion-down": {

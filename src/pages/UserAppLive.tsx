@@ -3,18 +3,13 @@
  */
 
 import { useState, useEffect } from "react";
-
-// Unified base URL configuration
-const BASE = import.meta.env.VITE_SIM_BASE_URL ?? 'http://localhost:3001';
-const STREAM_URL = `${BASE}/stream`;
 import { useAuth } from "@/contexts/AuthContext";
-import { ModernLayout } from "@/components/layout/ModernLayout";
-import { BigBlock } from "@/components/ui/BigBlock";
-import { StatCard } from "@/components/ui/StatCard";
-import { StatusPill } from "@/components/ui/StatusPill";
+import { UserHeader } from "@/components/user/UserHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Activity, Home, Sun, Battery, Zap, ArrowUpCircle, ArrowDownCircle, Power, AlertTriangle, TrendingUp, TrendingDown, DollarSign, CreditCard } from "lucide-react";
+import { Activity, Home, Sun, Battery, Zap, ArrowUpCircle, ArrowDownCircle, Power, AlertTriangle, TrendingUp } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 // Import Tesla-style components
@@ -229,7 +224,7 @@ export default function UserAppLive() {
 
   useEffect(() => {
     // Try to connect to real simulator first
-    const es = new EventSource(STREAM_URL, { withCredentials: false });
+    const es = new EventSource("http://localhost:3001/stream");
 
     es.onopen = () => {
       setConnected(true);
@@ -237,12 +232,6 @@ export default function UserAppLive() {
     };
 
     es.onmessage = (event) => {
-      // Handle heartbeat
-      if (event.data === ':keepalive') {
-        console.log("💓 Heartbeat received");
-        return;
-      }
-
       try {
         const data = JSON.parse(event.data);
         
@@ -336,38 +325,36 @@ export default function UserAppLive() {
 
   if (error) {
     return (
-      <ModernLayout 
-        title={`${familyName} Family`} 
-        subtitle="Live Energy Dashboard"
-        status="error"
-      >
-        <div className="text-center">
-          <h1 className="text-h2 text-error mb-4">Connection Error</h1>
-          <p className="text-muted">{error}</p>
+      <div className="min-h-screen bg-background">
+        <UserHeader homeId={homeId || "H001"} />
+        <div className="max-w-6xl mx-auto p-6">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-red-600 mb-4">Connection Error</h1>
+            <p className="text-muted-foreground">{error}</p>
+          </div>
         </div>
-      </ModernLayout>
+      </div>
     );
   }
 
   if (!liveHome) {
     return (
-      <ModernLayout 
-        title={`${familyName} Family`} 
-        subtitle="Live Energy Dashboard"
-        status="loading"
-      >
-        <div className="text-center">
-          <Activity className="h-12 w-12 animate-pulse mx-auto text-brand mb-4" />
-          <h1 className="text-h2 mb-2">Connecting to {familyName}...</h1>
-          <p className="text-muted">Loading live energy data</p>
+      <div className="min-h-screen bg-background">
+        <UserHeader homeId={homeId || "H001"} />
+        <div className="max-w-6xl mx-auto p-6">
+          <div className="text-center">
+            <Activity className="h-12 w-12 animate-pulse mx-auto text-primary mb-4" />
+            <h1 className="text-2xl font-bold mb-2">Connecting to {familyName}...</h1>
+            <p className="text-muted-foreground">Loading live energy data</p>
+          </div>
         </div>
-      </ModernLayout>
+      </div>
     );
   }
 
   const handleGoOffGrid = async () => {
     try {
-      await fetch(`${BASE}/sim/event`, {
+      await fetch('http://localhost:3001/sim/event', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'OUTAGE' })
@@ -378,21 +365,39 @@ export default function UserAppLive() {
   };
 
   return (
-    <ModernLayout 
-      title={`${familyName} Family`} 
-      subtitle={`Live energy monitoring • Updated every 2s (15-min intervals)`}
-      status={connected ? "live" : "error"}
-      actionButton={
-        <button 
-          onClick={handleGoOffGrid}
-          className="control-chip control-chip-inactive focus-ring flex items-center gap-2"
-        >
-          <Power className="h-4 w-4" />
-          Go Off-Grid
-        </button>
-      }
-    >
-      <div className="space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900 dark:to-emerald-900">
+      <UserHeader homeId={homeId || "H001"} />
+
+      <div className="max-w-6xl mx-auto p-8 space-y-8">
+        {/* Sharp Modern Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-black flex items-center gap-3 text-gray-800 dark:text-white tracking-tight">
+              <Home className="h-10 w-10 text-green-600 dark:text-green-400" />
+              {familyName}
+            </h1>
+            <p className="text-lg text-gray-600 dark:text-gray-300 mt-2 font-medium">
+              Live energy monitoring • Updated every 2s (15-min intervals)
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <Badge 
+              variant={connected ? "default" : "secondary"} 
+              className="text-sm font-black bg-green-600 dark:bg-green-400 text-white dark:text-black border-2 border-green-600 dark:border-green-400"
+            >
+              {connected ? "🟢 LIVE" : "⚫ Offline"}
+            </Badge>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleGoOffGrid}
+              className="h-10 px-6 font-black border-2 border-green-600 dark:border-green-400 text-green-600 dark:text-green-400 hover:bg-green-600 dark:hover:bg-green-400 hover:text-white dark:hover:text-black transition-all duration-200"
+            >
+              <Power className="h-4 w-4 mr-2" />
+              Go Off-Grid
+            </Button>
+          </div>
+        </div>
 
         {/* Production-Grade Tesla-Style Hero */}
         <HeroHouse3DPro
@@ -407,109 +412,168 @@ export default function UserAppLive() {
           updatedAt={new Date()}
         />
 
-        {/* Big Percentage Blocks */}
+        {/* Sharp Modern Primary Metrics - Small Blocks */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <BigBlock
-            label="Solar Production"
-            value={`${liveHome.pv.toFixed(1)} kW`}
-            className="bg-prod-gold/10 border border-prod-gold/20"
-          />
-          <BigBlock
-            label="Battery"
-            value={`${liveHome.soc.toFixed(0)}%`}
-            unit=""
-            percentage={true}
-            className="gradient-brand"
-          />
-          <BigBlock
-            label="Consumption"
-            value={`${liveHome.load.toFixed(1)} kW`}
-            className="bg-cons-red/10 border border-cons-red/20"
-          />
+          <Card className="bg-white dark:bg-gray-900 border-3 border-yellow-500 dark:border-yellow-400 shadow-[0_0_0_2px_rgba(234,179,8,0.2)] hover:shadow-[0_0_0_3px_rgba(234,179,8,0.3)] transition-all duration-200">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-5 h-5 bg-yellow-500 dark:bg-yellow-400"></div>
+                <div className="text-lg font-black text-gray-800 dark:text-white">SOLAR</div>
+              </div>
+              <div className="text-4xl font-black text-yellow-600 dark:text-yellow-400 mb-2">
+                {liveHome.pv.toFixed(1)} kW
+              </div>
+              <div className="text-base font-medium text-gray-700 dark:text-gray-300">Current generation</div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-white dark:bg-gray-900 border-3 border-gray-500 dark:border-gray-400 shadow-[0_0_0_2px_rgba(107,114,128,0.2)] hover:shadow-[0_0_0_3px_rgba(107,114,128,0.3)] transition-all duration-200">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-5 h-5 bg-gray-500 dark:bg-gray-400"></div>
+                <div className="text-lg font-black text-gray-800 dark:text-white">HOME</div>
+              </div>
+              <div className="text-4xl font-black text-gray-800 dark:text-white mb-2">
+                {liveHome.load.toFixed(1)} kW
+              </div>
+              <div className="text-base font-medium text-gray-700 dark:text-gray-300">Current usage</div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-white dark:bg-gray-900 border-3 border-purple-500 dark:border-purple-400 shadow-[0_0_0_2px_rgba(168,85,247,0.2)] hover:shadow-[0_0_0_3px_rgba(168,85,247,0.3)] transition-all duration-200">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-5 h-5 bg-purple-500 dark:bg-purple-400"></div>
+                <div className="text-lg font-black text-gray-800 dark:text-white">BATTERY</div>
+              </div>
+              <div className="text-4xl font-black text-purple-600 dark:text-purple-400 mb-2">
+                {liveHome.soc.toFixed(0)}%
+              </div>
+              <div className="text-base font-medium text-gray-700 dark:text-gray-300">
+                {(liveHome.soc * 0.06).toFixed(1)}kWh / 6kWh
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Credits and Economics */}
+        {/* Sharp Modern Credits and Economics - House Tiles */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <StatCard
-            title="Credits Today"
-            value={`${liveHome.credits_balance_kwh?.toFixed(1) || '0.0'} kWh`}
-            subtext={`Earned: ${liveHome.earned_today_kwh?.toFixed(1) || '0.0'} kWh • Used: ${liveHome.used_today_kwh?.toFixed(1) || '0.0'} kWh`}
-            icon={CreditCard}
-          />
-          
-          <StatCard
-            title="Savings Today"
-            value={`$${liveHome.savings_usd?.toFixed(2) || '0.00'}`}
-            subtext={`Baseline: $${liveHome.baseline_cost_usd?.toFixed(2) || '0.00'} • Microgrid: $${liveHome.microgrid_cost_usd?.toFixed(2) || '0.00'}`}
-            icon={DollarSign}
-            trend="up"
-          />
+          <Card className="bg-white dark:bg-gray-900 border-3 border-green-600 dark:border-green-400 shadow-[0_0_0_2px_rgba(34,197,94,0.2)] hover:shadow-[0_0_0_3px_rgba(34,197,94,0.3)] transition-all duration-200">
+            <CardHeader className="pb-5">
+              <CardTitle className="text-xl font-black flex items-center gap-4 text-gray-800 dark:text-white">
+                <TrendingUp className="h-6 w-6 text-green-600 dark:text-green-400" />
+                Credits Today
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-5">
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-black text-gray-700 dark:text-gray-300">Earned:</span>
+                  <span className="font-mono font-black text-xl text-green-600 dark:text-green-400">
+                    {liveHome.earned_today_kwh?.toFixed(1) || '0.0'} kWh
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-black text-gray-700 dark:text-gray-300">Used:</span>
+                  <span className="font-mono font-black text-xl text-blue-600 dark:text-blue-400">
+                    {liveHome.used_today_kwh?.toFixed(1) || '0.0'} kWh
+                  </span>
+                </div>
+                <div className="flex justify-between items-center border-t-3 border-green-600 dark:border-green-400 pt-4">
+                  <span className="text-lg font-black text-gray-800 dark:text-white">Net MTD:</span>
+                  <span className="font-mono font-black text-xl text-gray-800 dark:text-white">
+                    {liveHome.credits_balance_kwh?.toFixed(1) || '0.0'} kWh
+                  </span>
+                </div>
+                <div className="text-base text-gray-600 dark:text-gray-400 mt-4 font-black">
+                  Value: ${liveHome.local_value_usd?.toFixed(2) || '0.00'} earned, ${liveHome.local_cost_usd?.toFixed(2) || '0.00'} spent
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white dark:bg-gray-900 border-3 border-green-600 dark:border-green-400 shadow-[0_0_0_2px_rgba(34,197,94,0.2)] hover:shadow-[0_0_0_3px_rgba(34,197,94,0.3)] transition-all duration-200">
+            <CardHeader className="pb-5">
+              <CardTitle className="text-xl font-black flex items-center gap-4 text-gray-800 dark:text-white">
+                <TrendingUp className="h-6 w-6 text-green-600 dark:text-green-400" />
+                Cost Comparison
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-5">
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-black text-gray-700 dark:text-gray-300">Baseline Cost:</span>
+                  <span className="font-mono font-black text-xl text-red-600 dark:text-red-400">
+                    ${liveHome.baseline_cost_usd?.toFixed(2) || '0.00'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-black text-gray-700 dark:text-gray-300">Microgrid Cost:</span>
+                  <span className="font-mono font-black text-xl text-blue-600 dark:text-blue-400">
+                    ${liveHome.microgrid_cost_usd?.toFixed(2) || '0.00'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center border-t-3 border-green-600 dark:border-green-400 pt-4">
+                  <span className="text-lg font-black text-gray-800 dark:text-white">Savings:</span>
+                  <span className="font-mono font-black text-xl text-green-600 dark:text-green-400">
+                    ${liveHome.savings_usd?.toFixed(2) || '0.00'}
+                  </span>
+                </div>
+                <div className="text-base text-gray-600 dark:text-gray-400 mt-4 font-black">
+                  Fair rate: $0.18/kWh for microgrid transactions
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Community Sharing & Grid Interaction */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard
+        {/* Sharp Modern Community Sharing */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FlowStatCard
             title="Sharing with Community"
-            value={`${liveHome.share.toFixed(1)} kW`}
-            subtext="Helping neighbors"
-            icon={ArrowUpCircle}
-            trend="up"
+            kw={liveHome.share}
+            tone="green"
+            description="Helping neighbors"
+            icon={<ArrowUpCircle className="h-5 w-5" />}
           />
-          
-          <StatCard
+          <FlowStatCard
             title="Receiving from Community"
-            value={`${liveHome.recv.toFixed(1)} kW`}
-            subtext="Getting help from neighbors"
-            icon={ArrowDownCircle}
-            trend="down"
-          />
-          
-          <StatCard
-            title="Grid Import"
-            value={`${liveHome.imp.toFixed(1)} kW`}
-            subtext="Drawing from grid"
-            icon={TrendingDown}
-            trend="down"
-          />
-          
-          <StatCard
-            title="Grid Export"
-            value={`${liveHome.exp.toFixed(1)} kW`}
-            subtext="Selling to grid"
-            icon={TrendingUp}
-            trend="up"
+            kw={liveHome.recv}
+            tone="blue"
+            description="Getting help from neighbors"
+            icon={<ArrowDownCircle className="h-5 w-5" />}
           />
         </div>
 
-        {/* Energy Flow Chart */}
-        <div className="panel-dark">
-          <div className="mb-6">
-            <h2 className="text-h2 text-white mb-2">Energy Flow Timeline</h2>
-            <p className="text-muted">
-              Live tracking of your home's energy production, consumption, and community sharing
-            </p>
-          </div>
-          <EnergyFlowChart data={chartData} maxDataPoints={maxDataPoints} />
+        {/* Sharp Modern Grid Interaction */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="bg-white dark:bg-gray-900 border-3 border-orange-500 dark:border-orange-400 shadow-[0_0_0_2px_rgba(249,115,22,0.2)] hover:shadow-[0_0_0_3px_rgba(249,115,22,0.3)] transition-all duration-200">
+            <CardContent className="p-6">
+              <div className="text-center p-6 bg-orange-50 dark:bg-orange-950/20 border-2 border-orange-200 dark:border-orange-800">
+                <div className="text-4xl font-black text-orange-600 dark:text-orange-400 mb-3">
+                  {liveHome.imp.toFixed(1)} kW
+                </div>
+                <div className="text-lg font-black text-gray-700 dark:text-gray-300">Grid Import</div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-white dark:bg-gray-900 border-3 border-cyan-500 dark:border-cyan-400 shadow-[0_0_0_2px_rgba(6,182,212,0.2)] hover:shadow-[0_0_0_3px_rgba(6,182,212,0.3)] transition-all duration-200">
+            <CardContent className="p-6">
+              <div className="text-center p-6 bg-cyan-50 dark:bg-cyan-950/20 border-2 border-cyan-200 dark:border-cyan-800">
+                <div className="text-4xl font-black text-cyan-600 dark:text-cyan-400 mb-3">
+                  {liveHome.exp.toFixed(1)} kW
+                </div>
+                <div className="text-lg font-black text-gray-700 dark:text-gray-300">Grid Export</div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Success Message */}
-        <div className="card-modern border-ok/20 bg-ok/5">
-          <div className="flex items-center gap-4">
-            <div className="h-10 w-10 rounded-full bg-ok flex items-center justify-center">
-              <span className="text-white text-lg font-bold">✓</span>
-            </div>
-            <div>
-              <h3 className="text-h3 text-ok mb-1">
-                Your Home Dashboard is Working!
-              </h3>
-              <p className="text-muted">
-                Your personal energy dashboard is successfully receiving live data from the simulator backend.
-                All energy flows are updating in real-time with the complete chart visualization!
-              </p>
-            </div>
-          </div>
-        </div>
+        {/* Tesla-style Energy Flow Chart */}
+        <EnergyFlowChart data={chartData} maxDataPoints={maxDataPoints} />
+
       </div>
-    </ModernLayout>
+    </div>
   );
 }

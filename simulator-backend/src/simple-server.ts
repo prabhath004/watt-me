@@ -11,8 +11,8 @@ const HOST = 'localhost';
 
 // Middleware
 app.use(cors({ 
-  origin: 'http://localhost:8082',
-  methods: ['GET', 'POST', 'OPTIONS'],
+  origin: 'http://localhost:8080',
+  methods: ['GET', 'POST'],
   credentials: true 
 }));
 app.use(express.json());
@@ -251,17 +251,6 @@ setInterval(() => {
   });
 }, 2000); // Update every 2 seconds
 
-// Heartbeat every 15 seconds to keep connections alive
-setInterval(() => {
-  sseClients.forEach(client => {
-    try {
-      client.write(':keepalive\n\n');
-    } catch (err) {
-      console.error("SSE heartbeat error:", err);
-    }
-  });
-}, 15000);
-
 // Routes
 app.get("/health", (req, res) => {
   res.json({ ok: true });
@@ -272,13 +261,9 @@ app.get("/stream", (req, res) => {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache, no-transform',
     'Connection': 'keep-alive',
-    'Access-Control-Allow-Origin': 'http://localhost:8082'
+    'Access-Control-Allow-Origin': 'http://localhost:8080'
   });
   res.flushHeaders();
-
-  // Send boot event immediately so client can render
-  const hello = { kind: 'boot', ts: Date.now() };
-  res.write(`data: ${JSON.stringify(hello)}\n\n`);
 
   // Send initial state
   const data = {

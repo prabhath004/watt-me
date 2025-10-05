@@ -87,42 +87,34 @@ export default function LoginAdmin() {
   const isDisabled = !email || !password || loading;
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-8">
+    <div className="min-h-screen flex items-center justify-center p-8 bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900 dark:to-emerald-900">
       <div className="w-full max-w-[520px]">
         <div 
-          className="p-10 rounded-2xl"
+          className="p-12 bg-white dark:bg-gray-900 border-2 border-green-600 dark:border-green-400 shadow-[0_0_0_1px_rgba(34,197,94,0.1)]"
           style={{ 
-            backgroundColor: 'var(--surface)',
-            border: '1px solid var(--border)',
-            boxShadow: 'var(--shadow-card)',
-            borderRadius: 'var(--radius-xl)'
+            background: 'linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)',
+            boxShadow: '0 0 0 1px rgba(34,197,94,0.1), 0 20px 25px -5px rgba(34,197,94,0.1), 0 10px 10px -5px rgba(34,197,94,0.04)'
           }}
         >
           {/* Brand lockup */}
-          <div className="flex items-start gap-3 mb-5">
+          <div className="flex items-start gap-6 mb-10">
             <div 
-              className="flex h-6 w-6 items-center justify-center rounded"
-              style={{ backgroundColor: 'var(--surface-2)' }}
+              className="flex h-16 w-16 items-center justify-center bg-green-600 dark:bg-green-400"
             >
-              <Zap className="h-4 w-4" style={{ color: 'var(--acc-green)' }} />
+              <Zap className="h-8 w-8 text-white dark:text-black" />
             </div>
             <div className="flex-1">
-              <div className="font-semibold mb-1" style={{ color: 'var(--text)' }}>
-                NeighborGrid
+              <div className="font-black text-2xl mb-2 text-green-600 dark:text-green-400 tracking-tight">
+                ShareWatt
               </div>
-              <h1 className="text-2xl font-semibold mb-1" style={{ color: 'var(--text)' }}>
-                {isSignUp ? 'Admin Console Sign up' : 'Admin Console Sign in'}
+              <h1 className="text-4xl font-black mb-3 text-gray-800 dark:text-white tracking-tight">
+                {isSignUp ? 'Admin Sign up' : 'Admin Sign in'}
               </h1>
-              <div className="flex items-center gap-2">
-                <p className="text-sm" style={{ color: 'var(--text-dim)' }}>For microgrid operators</p>
+              <div className="flex items-center gap-4">
+                <p className="text-base text-gray-600 dark:text-gray-400 font-medium">For microgrid operators</p>
                 <Badge 
                   variant="secondary" 
-                  className="text-xs"
-                  style={{ 
-                    backgroundColor: 'var(--surface-2)', 
-                    color: 'var(--muted)',
-                    border: '1px solid var(--border)'
-                  }}
+                  className="text-xs font-black uppercase tracking-wider bg-green-600 dark:bg-green-400 text-white dark:text-black border-2 border-green-600 dark:border-green-400"
                 >
                   Operator Access
                 </Badge>
@@ -130,9 +122,9 @@ export default function LoginAdmin() {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-3">
+          <form onSubmit={handleSubmit} className="space-y-8">
             <div>
-              <Label htmlFor="email" className="text-sm" style={{ color: 'var(--text-dim)' }}>Email</Label>
+              <Label htmlFor="email" className="text-sm font-black text-green-600 dark:text-green-400 uppercase tracking-wider">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -140,19 +132,13 @@ export default function LoginAdmin() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@example.com"
                 required
-                className="mt-1 h-12"
-                style={{
-                  backgroundColor: 'var(--surface)',
-                  border: '1px solid var(--border)',
-                  color: 'var(--text)',
-                  borderRadius: 'var(--radius-xl)'
-                }}
+                className="mt-3 h-16 text-lg border-2 border-green-600 dark:border-green-400 focus:border-green-600 dark:focus:border-green-400 focus:ring-0 bg-white dark:bg-gray-900 text-gray-800 dark:text-white font-medium transition-all duration-200"
               />
             </div>
 
             <div>
-              <Label htmlFor="password" className="text-sm" style={{ color: 'var(--text-dim)' }}>Password</Label>
-              <div className="relative mt-1">
+              <Label htmlFor="password" className="text-sm font-black text-green-600 dark:text-green-400 uppercase tracking-wider">Password</Label>
+              <div className="relative mt-3">
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
@@ -160,73 +146,84 @@ export default function LoginAdmin() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="h-12 pr-10"
-                  style={{
-                    backgroundColor: 'var(--surface)',
-                    border: '1px solid var(--border)',
-                    color: 'var(--text)',
-                    borderRadius: 'var(--radius-xl)'
-                  }}
+                  className="h-16 pr-16 text-lg border-2 border-green-600 dark:border-green-400 focus:border-green-600 dark:focus:border-green-400 focus:ring-0 bg-white dark:bg-gray-900 text-gray-800 dark:text-white font-medium transition-all duration-200"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 focus:outline-none focus:ring-2 focus:ring-offset-2 rounded"
-                  style={{ color: 'var(--muted)' }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 focus:outline-none p-2 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? <EyeOff className="h-5 w-5 text-green-600 dark:text-green-400" /> : <Eye className="h-5 w-5 text-green-600 dark:text-green-400" />}
                 </button>
               </div>
             </div>
 
-            <div className="pt-1">
+            <div className="pt-6">
               <Button
                 type="submit"
                 disabled={isDisabled}
-                className="w-full h-12 font-medium transition-all active:translate-y-px"
-                variant="default"
+                className={`w-full h-20 text-xl font-black transition-all duration-200 focus:outline-none ${
+                  isDisabled 
+                    ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed border-2 border-gray-300 dark:border-gray-600' 
+                    : 'bg-green-600 dark:bg-green-400 text-white dark:text-black border-2 border-green-600 dark:border-green-400 hover:bg-green-700 dark:hover:bg-green-300 hover:border-green-700 dark:hover:border-green-300'
+                }`}
               >
-                {loading ? (isSignUp ? 'Creating account...' : 'Signing in...') : (isSignUp ? 'Create account' : 'Sign in')}
+                {loading ? (
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 border-2 border-white/30 border-t-white dark:border-black/30 dark:border-t-black rounded-full animate-spin"></div>
+                    {isSignUp ? 'Creating account...' : 'Signing in...'}
+                  </div>
+                ) : (
+                  isSignUp ? 'CREATE ACCOUNT' : 'SIGN IN'
+                )}
               </Button>
             </div>
 
-            <div className="flex justify-between items-center text-sm pt-1">
+            <div className="flex justify-between items-center pt-4">
               <button
                 type="button"
                 onClick={() => setIsSignUp(!isSignUp)}
-                className="hover:underline focus:outline-none focus:ring-2 focus:ring-offset-2 rounded px-1"
-                style={{ color: 'var(--acc-cyan)' }}
+                className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-black text-sm uppercase tracking-wider hover:underline focus:outline-none transition-colors duration-200"
               >
                 {isSignUp ? 'Already have an account? Sign in' : 'Need an account? Sign up'}
               </button>
               <Link
                 to="/login/user"
-                className="hover:underline focus:outline-none focus:ring-2 focus:ring-offset-2 rounded px-1"
-                style={{ color: 'var(--acc-cyan)' }}
+                className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-black text-sm uppercase tracking-wider hover:underline focus:outline-none transition-colors duration-200"
               >
                 Sign in as User
               </Link>
             </div>
 
             {/* Demo Setup Button - Prominent */}
-            <div className="pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
-              <p className="text-xs text-center mb-2" style={{ color: 'var(--text-dim)' }}>
+            <div className="pt-8 border-t-2 border-green-600 dark:border-green-400">
+              <p className="text-base text-center mb-6 text-green-600 dark:text-green-400 font-black uppercase tracking-wider">
                 First time here? Create demo accounts to get started
               </p>
               <Button
                 type="button"
                 onClick={setupDemoUsers}
                 disabled={setupLoading}
-                className="w-full h-12 font-semibold"
-                style={{
-                  backgroundColor: 'var(--acc-green)',
-                  color: 'white'
-                }}
+                className={`w-full h-20 text-xl font-black transition-all duration-200 focus:outline-none ${
+                  setupLoading 
+                    ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed border-2 border-gray-300 dark:border-gray-600' 
+                    : 'bg-green-600 dark:bg-green-400 text-white dark:text-black border-2 border-green-600 dark:border-green-400 hover:bg-green-700 dark:hover:bg-green-300 hover:border-green-700 dark:hover:border-green-300'
+                }`}
               >
-                {setupLoading ? 'Setting up demo users...' : '⚡ Setup Demo Users'}
+                {setupLoading ? (
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 border-2 border-white/30 border-t-white dark:border-black/30 dark:border-t-black rounded-full animate-spin"></div>
+                    Setting up demo users...
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <Zap className="h-6 w-6" />
+                    SETUP DEMO USERS
+                  </div>
+                )}
               </Button>
-              <p className="text-xs text-center mt-2" style={{ color: 'var(--muted)' }}>
+              <p className="text-sm text-center mt-4 text-gray-600 dark:text-gray-400 font-medium">
                 Creates: admin@demo.com & user@demo.com (password: demo123)
               </p>
             </div>

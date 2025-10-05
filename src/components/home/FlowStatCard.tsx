@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 interface FlowStatCardProps {
   title: string;
   kw: number;
-  tone: 'green' | 'blue';
+  tone: 'green' | 'blue' | 'orange' | 'cyan';
   description: string;
   icon: React.ReactNode;
 }
@@ -20,21 +20,43 @@ export function FlowStatCard({
     switch (tone) {
       case 'green':
         return {
-          text: 'text-[var(--good)]',
-          bg: 'bg-green-50 dark:bg-green-950/20',
-          icon: 'text-green-500'
+          text: 'text-green-600 dark:text-green-400',
+          bg: 'bg-white dark:bg-gray-900',
+          icon: 'text-green-600 dark:text-green-400',
+          border: 'border-3 border-green-500 dark:border-green-400',
+          shadow: 'shadow-[0_0_0_2px_rgba(34,197,94,0.2)] hover:shadow-[0_0_0_3px_rgba(34,197,94,0.3)]'
         };
       case 'blue':
         return {
-          text: 'text-[var(--accent)]',
-          bg: 'bg-blue-50 dark:bg-blue-950/20',
-          icon: 'text-blue-500'
+          text: 'text-blue-600 dark:text-blue-400',
+          bg: 'bg-white dark:bg-gray-900',
+          icon: 'text-blue-600 dark:text-blue-400',
+          border: 'border-3 border-blue-500 dark:border-blue-400',
+          shadow: 'shadow-[0_0_0_2px_rgba(59,130,246,0.2)] hover:shadow-[0_0_0_3px_rgba(59,130,246,0.3)]'
+        };
+      case 'orange':
+        return {
+          text: 'text-orange-600 dark:text-orange-400',
+          bg: 'bg-white dark:bg-gray-900',
+          icon: 'text-orange-600 dark:text-orange-400',
+          border: 'border-3 border-orange-500 dark:border-orange-400',
+          shadow: 'shadow-[0_0_0_2px_rgba(249,115,22,0.2)] hover:shadow-[0_0_0_3px_rgba(249,115,22,0.3)]'
+        };
+      case 'cyan':
+        return {
+          text: 'text-cyan-600 dark:text-cyan-400',
+          bg: 'bg-white dark:bg-gray-900',
+          icon: 'text-cyan-600 dark:text-cyan-400',
+          border: 'border-3 border-cyan-500 dark:border-cyan-400',
+          shadow: 'shadow-[0_0_0_2px_rgba(6,182,212,0.2)] hover:shadow-[0_0_0_3px_rgba(6,182,212,0.3)]'
         };
       default:
         return {
-          text: 'text-[var(--ink)]',
-          bg: 'bg-gray-50 dark:bg-gray-950/20',
-          icon: 'text-gray-500'
+          text: 'text-gray-600 dark:text-gray-400',
+          bg: 'bg-white dark:bg-gray-900',
+          icon: 'text-gray-600 dark:text-gray-400',
+          border: 'border-3 border-gray-500 dark:border-gray-400',
+          shadow: 'shadow-[0_0_0_2px_rgba(107,114,128,0.2)] hover:shadow-[0_0_0_3px_rgba(107,114,128,0.3)]'
         };
     }
   };
@@ -42,9 +64,9 @@ export function FlowStatCard({
   const styles = getToneStyles();
 
   return (
-    <Card className="rounded-2xl border bg-[var(--surface)] shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
+    <Card className={`${styles.bg} ${styles.border} ${styles.shadow} transition-all duration-200 hover:-translate-y-1`}>
+      <CardHeader className="pb-4">
+        <CardTitle className="flex items-center gap-3 text-lg font-black text-gray-800 dark:text-white">
           <div className={styles.icon}>
             {icon}
           </div>
@@ -52,10 +74,10 @@ export function FlowStatCard({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className={`text-4xl font-bold ${styles.text} mb-2`}>
+        <div className={`text-5xl font-black ${styles.text} mb-3`}>
           {kw.toFixed(2)} kW
         </div>
-        <p className="text-sm text-[var(--muted)]">
+        <p className="text-base font-black text-gray-700 dark:text-gray-300">
           {description}
         </p>
       </CardContent>
