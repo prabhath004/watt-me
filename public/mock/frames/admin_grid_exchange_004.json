@@ -1,0 +1,10 @@
+{
+  "updated_at": "2025-10-04T13:32:00Z",
+  "to_grid_now_kw_total": 0.00,
+  "to_grid_today_kwh_total": 6.0,
+  "from_grid_now_kw_total": 0.00,
+  "grid_drawers_now": [],
+  "grid_exporters_now_top": [],
+  "unserved_need_kw": 0.00,
+  "is_islanded": true
+}

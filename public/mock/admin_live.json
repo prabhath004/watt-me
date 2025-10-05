@@ -1,0 +1,13 @@
+{
+  "updated_at": "2025-10-04T13:30:00Z",
+  "pairings": [
+    { "from": "H1", "to": "H2", "kw": 0.3 },
+    { "from": "H3", "to": "H4", "kw": 0.4 },
+    { "from": "H3", "to": "H8", "kw": 0.2 },
+    { "from": "H5", "to": "H6", "kw": 0.2 },
+    { "from": "H7", "to": "H8", "kw": 0.4 },
+    { "from": "H9", "to": "H10", "kw": 0.2 }
+  ],
+  "unserved_need_kw": 0.0,
+  "sent_to_grid_kw": 0.1
+}

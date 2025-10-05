@@ -1,0 +1,9 @@
+{
+  "to_microgrid_now_kw": 0.6,
+  "from_microgrid_now_kw": 0.0,
+  "partners": {
+    "to": ["H8", "H2"],
+    "from": []
+  },
+  "unused_surplus_to_grid_now_kw": 0.0
+}

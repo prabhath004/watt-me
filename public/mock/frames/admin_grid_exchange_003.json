@@ -1,0 +1,20 @@
+{
+  "updated_at": "2025-10-04T13:31:30Z",
+  "to_grid_now_kw_total": 1.20,
+  "to_grid_today_kwh_total": 5.9,
+  "from_grid_now_kw_total": 1.50,
+  "grid_drawers_now": [
+    { "id": "H4", "kw": 0.45 },
+    { "id": "H6", "kw": 0.20 },
+    { "id": "H8", "kw": 0.50 },
+    { "id": "H10", "kw": 0.20 },
+    { "id": "H2", "kw": 0.15 }
+  ],
+  "grid_exporters_now_top": [
+    { "id": "H3", "kw": 0.50 },
+    { "id": "H1", "kw": 0.40 },
+    { "id": "H7", "kw": 0.30 }
+  ],
+  "unserved_need_kw": 0.00,
+  "is_islanded": false
+}
