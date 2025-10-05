@@ -15,7 +15,10 @@ import { KPICard } from "@/components/ui/KPICard";
 import { StatCard } from "@/components/ui/StatCard";
 import { ControlBar } from "@/components/ui/ControlBar";
 import { StatusPill } from "@/components/ui/StatusPill";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import InteractiveMap from "@/components/admin/InteractiveMap";
+import { useAdminStatePolling } from "@/hooks/useAdminStatePolling";
+import { int, decimal, percent, currency } from "@/lib/safeFormatters";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +58,9 @@ export default function AdminLive() {
   const [outageActive, setOutageActive] = useState(false);
   const [outageTimeLeft, setOutageTimeLeft] = useState(0);
   const [lastMessageTime, setLastMessageTime] = useState<number>(Date.now());
+  
+  // Polling fallback for when SSE fails
+  const { state: pollingState, err: pollingError } = useAdminStatePolling();
   const [isPlaying, setIsPlaying] = useState(true);
   const [speed, setSpeed] = useState(1);
   const maxDataPoints = 96; // Keep last 96 points (24 hours = 96 * 15min intervals)
@@ -277,6 +283,26 @@ export default function AdminLive() {
         onReset={handleReset}
       />
 
+      {/* JSON Preview for Debugging */}
+      <ErrorBoundary>
+        <div className="mb-4 p-4 bg-gray-100 rounded-lg">
+          <h4 className="font-semibold mb-2">Debug: Raw Data</h4>
+          <pre 
+            className="text-xs overflow-auto max-h-32 bg-white p-2 rounded border"
+            data-testid="admin-json"
+          >
+            {adminNow ? JSON.stringify(adminNow, null, 2) : 
+             pollingState ? JSON.stringify(pollingState, null, 2) : 
+             'Loading...'}
+          </pre>
+          {pollingError && (
+            <div className="text-red-600 text-sm mt-2">
+              Polling error: {pollingError}
+            </div>
+          )}
+        </div>
+      </ErrorBoundary>
+
       {/* Outage Alert */}
       {outageActive && (
         <Alert className="mb-6 bg-warn/20 text-warn border-warn/30">
@@ -288,51 +314,56 @@ export default function AdminLive() {
       )}
 
       {/* KPI Ribbon */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <KPICard
-          icon={Sun}
-          title="Production"
-          value={`${r(adminNow?.production_kw || 0)} kW`}
-          subtext={`${Math.round((adminNow?.production_kw || 0) / 0.2)} of 20 homes producing`}
-          color="prod-gold"
-          trend="up"
-        />
-        
-        <KPICard
-          icon={Activity}
-          title="Microgrid"
-          value={`${r((adminNow?.microgrid_shared_kw || 0) * 10) / 10} kW`}
-          subtext={`${Math.round((adminNow?.microgrid_shared_kw || 0) / 0.1)} homes sharing`}
-          color="share-green"
-          trend="up"
-        />
-        
-        <KPICard
-          icon={(adminNow?.grid_import_kw || 0) > 0 ? TrendingDown : TrendingUp}
-          title="Grid"
-          value={(adminNow?.grid_import_kw || 0) > 0 ? `↓ ${r(adminNow?.grid_import_kw || 0)} kW` : `↑ ${r(adminNow?.grid_export_kw || 0)} kW`}
-          subtext={(adminNow?.grid_import_kw || 0) > 0 ? "Importing" : "Exporting"}
-          color="grid-blue"
-          trend={(adminNow?.grid_import_kw || 0) > 0 ? "down" : "up"}
-        />
-        
-        <KPICard
-          icon={Battery}
-          title="Avg Battery"
-          value={`${r(adminNow?.avg_battery_soc_pct || 0)}%`}
-          subtext="Community average"
-          color="brand-2"
-          trend="neutral"
-        />
-      </div>
+      <ErrorBoundary>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <KPICard
+            icon={Sun}
+            title="Production"
+            value={`${int(adminNow?.production_kw || 0)} kW`}
+            subtext={`${int((adminNow?.production_kw || 0) / 0.2)} of 20 homes producing`}
+            color="prod-gold"
+            trend="up"
+          />
+          
+          <KPICard
+            icon={Activity}
+            title="Microgrid"
+            value={`${decimal(adminNow?.microgrid_shared_kw || 0)} kW`}
+            subtext={`${int((adminNow?.microgrid_shared_kw || 0) / 0.1)} homes sharing`}
+            color="share-green"
+            trend="up"
+          />
+          
+          <KPICard
+            icon={(adminNow?.grid_import_kw || 0) > 0 ? TrendingDown : TrendingUp}
+            title="Grid"
+            value={(adminNow?.grid_import_kw || 0) > 0 ? `↓ ${int(adminNow?.grid_import_kw || 0)} kW` : `↑ ${int(adminNow?.grid_export_kw || 0)} kW`}
+            subtext={(adminNow?.grid_import_kw || 0) > 0 ? "Importing" : "Exporting"}
+            color="grid-blue"
+            trend={(adminNow?.grid_import_kw || 0) > 0 ? "down" : "up"}
+          />
+          
+          <KPICard
+            icon={Battery}
+            title="Avg Battery"
+            value={`${percent(adminNow?.avg_battery_soc_pct || 0)}%`}
+            subtext="Community average"
+            color="brand-2"
+            trend="neutral"
+          />
+        </div>
+      </ErrorBoundary>
 
       {/* Interactive Map */}
-      <div className="mb-6">
-        <InteractiveMap homes={[]} />
-      </div>
+      <ErrorBoundary>
+        <div className="mb-6">
+          <InteractiveMap homes={[]} />
+        </div>
+      </ErrorBoundary>
 
       {/* Energy Flow Timeline */}
-      <div className="panel-dark mb-6">
+      <ErrorBoundary>
+        <div className="panel-dark mb-6">
         <div className="p-6">
           <h3 className="text-xl font-bold text-white mb-4">Energy Flow Timeline</h3>
           <p className="text-gray-300 text-sm mb-6">Real-time community energy flows • 15-min intervals</p>
@@ -404,7 +435,8 @@ export default function AdminLive() {
             </ResponsiveContainer>
           </div>
         </div>
-      </div>
+        </div>
+      </ErrorBoundary>
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
